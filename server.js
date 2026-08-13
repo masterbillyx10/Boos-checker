@@ -7,7 +7,6 @@ const PORT = process.env.PORT || 3000;
 
 const ADMIN_KEY = process.env.ADMIN_KEY || "VALENTILE1234";
 
-// Discord OAuth2 Configurations
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || "";
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || "";
 const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || "https://boos-checker.onrender.com/api/auth/discord/callback";
@@ -35,7 +34,7 @@ setInterval(() => {
 let bosses = [];
 let idCounter = 1;
 
-// Official 50 (001-010 ฟรี / 011-050 ล็อค)
+// Official 50
 for (let i = 1; i <= 50; i++) {
     const serverName = `Official ${String(i).padStart(3, '0')}`;
     const lockedStatus = i > 10; 
@@ -52,12 +51,13 @@ for (let i = 1; i <= 50; i++) {
             nextSpawn: null,
             previousNextSpawn: null,
             resetAt: null,
-            createdBy: null
+            createdBy: null,
+            createdById: null // บันทึก ID ผู้จับเวลาเพื่อล็อกไม่ให้คนอื่นยุ่ง
         });
     });
 }
 
-// Premium 50 (001-010 ฟรี / 011-050 ล็อค)
+// Premium 50
 for (let i = 1; i <= 50; i++) {
     const serverName = `Premium ${String(i).padStart(3, '0')}`;
     const lockedStatus = i > 10;
@@ -74,23 +74,20 @@ for (let i = 1; i <= 50; i++) {
             nextSpawn: null,
             previousNextSpawn: null,
             resetAt: null,
-            createdBy: null
+            createdBy: null,
+            createdById: null
         });
     });
 }
 
-// ---------------- DISCORD OAUTH2 ENDPOINTS ----------------
+// ---------------- DISCORD OAUTH2 ----------------
 
-// Redirect ผู้ใช้ไปที่หน้า Login ของ Discord
 app.get('/api/auth/discord/login', (req, res) => {
-    if (!DISCORD_CLIENT_ID) {
-        return res.status(500).send("ยังไม่ได้ตั้งค่า DISCORD_CLIENT_ID ใน Environment Variables");
-    }
+    if (!DISCORD_CLIENT_ID) return res.status(500).send("ยังไม่ได้ตั้งค่า DISCORD_CLIENT_ID ใน Environment Variables");
     const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(DISCORD_REDIRECT_URI)}&response_type=code&scope=identify`;
     res.redirect(discordAuthUrl);
 });
 
-// Callback รองรับรหัสยืนยันจาก Discord
 app.get('/api/auth/discord/callback', (req, res) => {
     const code = req.query.code;
     if (!code) return res.redirect('/?error=no_code');
@@ -119,7 +116,6 @@ app.get('/api/auth/discord/callback', (req, res) => {
                 const tokenData = JSON.parse(body);
                 if (!tokenData.access_token) return res.redirect('/?error=token_failed');
 
-                // ดึงข้อมูลโปรไฟล์ผู้ใช้ Discord
                 const userReq = https.request({
                     hostname: 'discord.com',
                     path: '/api/users/@me',
@@ -131,7 +127,6 @@ app.get('/api/auth/discord/callback', (req, res) => {
                     userRes.on('end', () => {
                         try {
                             const userData = JSON.parse(userBody);
-                            // ส่งกลับหน้าหลักพร้อมแนบข้อมูลผู้ใช้
                             const queryParams = querystring.stringify({
                                 discord_id: userData.id,
                                 username: userData.username,
@@ -159,7 +154,7 @@ app.get('/api/auth/discord/callback', (req, res) => {
 app.get('/api/bosses', (req, res) => {
     const { serverType, location, userId, username } = req.query;
 
-    if (userId) {
+    if (userId && userId !== 'null' && userId !== 'guest') {
         const finalName = (username && username !== 'null' && username !== 'undefined' && username.trim() !== '') ? username : "Guest";
         activeUsers.set(userId, {
             id: userId,
@@ -205,6 +200,7 @@ app.post('/api/bosses/spawn', (req, res) => {
         boss.killedAt = now.toISOString();
         boss.nextSpawn = new Date(now.getTime() + RESPAWN_MINUTES * 60000).toISOString();
         boss.createdBy = username || "Guest";
+        boss.createdById = userId || null;
         boss.previousNextSpawn = null;
         boss.resetAt = null;
         return res.json({ success: true, boss });
@@ -213,9 +209,15 @@ app.post('/api/bosses/spawn', (req, res) => {
 });
 
 app.post('/api/bosses/reset', (req, res) => {
-    const { id } = req.body;
+    const { id, userId } = req.body;
     const boss = bosses.find(b => b.id === Number(id));
+    
     if (boss) {
+        // ตรวจสอบสิทธิ์: ป้องกันไม่ให้คนอื่นมา Reset ช่องที่เรากด SPAWN ไว้
+        if (boss.createdById && boss.createdById !== userId) {
+            return res.status(403).json({ success: false, message: "คุณไม่ใช่เจ้าของช่องนี้ ไม่สามารถกด RESET ได้" });
+        }
+
         if (boss.nextSpawn) {
             boss.previousNextSpawn = boss.nextSpawn;
             boss.resetAt = new Date().toISOString();
@@ -223,14 +225,16 @@ app.post('/api/bosses/reset', (req, res) => {
         boss.killedAt = null;
         boss.nextSpawn = null;
         boss.createdBy = null;
+        boss.createdById = null;
         return res.json({ success: true, boss });
     }
     res.status(404).json({ success: false, message: "Boss not found" });
 });
 
 app.post('/api/bosses/undo', (req, res) => {
-    const { id, username } = req.body;
+    const { id, username, userId } = req.body;
     const boss = bosses.find(b => b.id === Number(id));
+    
     if (boss) {
         if (!boss.previousNextSpawn || !boss.resetAt) {
             return res.status(400).json({ success: false, message: "ไม่มีข้อมูลสำหรับ Undo" });
@@ -246,6 +250,7 @@ app.post('/api/bosses/undo', (req, res) => {
 
         boss.nextSpawn = boss.previousNextSpawn;
         boss.createdBy = username || "Guest";
+        boss.createdById = userId || null;
         boss.previousNextSpawn = null;
         boss.resetAt = null;
         return res.json({ success: true, boss });
@@ -253,7 +258,7 @@ app.post('/api/bosses/undo', (req, res) => {
     res.status(404).json({ success: false, message: "Boss not found" });
 });
 
-// ---------------- API สำหรับ ADMIN ----------------
+// ---------------- API ADMIN ----------------
 
 app.post('/api/admin/data', (req, res) => {
     const { adminKey } = req.body;

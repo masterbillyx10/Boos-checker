@@ -366,17 +366,6 @@
             fetchBosses(true);
         }
 
-        async function voteResetBoss(id) {
-            const res = await fetch('/api/bosses/vote-reset', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, userId: myUserId, username: currentDiscordUser })
-            });
-            const data = await res.json();
-            alert(data.message);
-            fetchBosses(true);
-        }
-
         function renderBossGrid(forceRebuild = false) {
             const container = document.getElementById('boss-grid');
             if (bossesData.length === 0) return;
@@ -429,8 +418,11 @@
                 let badgeClass = "bg-[#ff6b00]/10 text-[#ff6b00] border-[#ff6b00]/30";
 
                 const isOwner = boss.createdById === myUserId;
+                const isPreviousOwner = boss.previousCreatedById === myUserId;
                 const isAdmin = ADMIN_USERNAMES.includes((currentDiscordUser || '').toLowerCase());
+                
                 const canReset = isOwner || isAdmin;
+                const canUndoControl = isPreviousOwner || isAdmin;
 
                 if (boss.nextSpawn) {
                     const spawnTime = new Date(boss.nextSpawn).getTime();
@@ -496,8 +488,8 @@
                     ? "bg-[#121212] text-slate-600 border border-[#282828] cursor-not-allowed opacity-50" 
                     : "bg-[#ff6b00]/10 hover:bg-[#ff6b00] text-[#ff6b00] hover:text-black border border-[#ff6b00]/40 cursor-pointer font-bold";
 
-                const undoBtnAttr = canUndo ? `onclick="undoBoss(${boss.id})"` : "disabled";
-                const undoBtnClass = canUndo 
+                const undoBtnAttr = (canUndo && canUndoControl) ? `onclick="undoBoss(${boss.id})"` : "disabled";
+                const undoBtnClass = (canUndo && canUndoControl) 
                     ? "bg-amber-950/40 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 cursor-pointer animate-pulse font-bold" 
                     : "bg-[#121212] text-slate-700 border border-[#282828] cursor-not-allowed opacity-40";
 
@@ -509,19 +501,6 @@
                 const userBadge = inUse && boss.createdBy 
                     ? `<span class="text-[10px] border px-2 py-0.5 rounded font-bold max-w-[110px] truncate ${badgeClass}">👤 ${boss.createdBy}</span>` 
                     : '';
-
-                // ปุ่ม Vote Report บอสยังไม่ตาย
-                let voteReportButton = '';
-                if (inUse && !isOwner) {
-                    const voteCount = boss.voteCount || 0;
-                    const hasVoted = boss.hasVoted;
-                    voteReportButton = `
-                        <button onclick="voteResetBoss(${boss.id})" ${hasVoted ? 'disabled' : ''} 
-                            class="w-full mt-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded py-1 text-[10px] font-bold transition flex items-center justify-center gap-1 ${hasVoted ? 'opacity-50 cursor-not-allowed' : ''}">
-                            <span>⚠️</span> <span>${hasVoted ? 'ลงโหวตแล้ว' : 'แจ้งบอสยังไม่ตาย'} (${voteCount}/3)</span>
-                        </button>
-                    `;
-                }
 
                 card.innerHTML = `
                     <div>
@@ -549,7 +528,6 @@
                                 RESET
                             </button>
                         </div>
-                        ${voteReportButton}
                     </div>
                 `;
             });

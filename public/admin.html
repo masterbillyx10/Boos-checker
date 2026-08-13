@@ -22,7 +22,7 @@
         <header class="flex justify-between items-center mb-8 pb-4 border-b border-slate-800">
             <div>
                 <h1 class="text-2xl md:text-3xl font-black font-gaming text-amber-400">⚙️ ADMIN CONTROL PANEL</h1>
-                <p class="text-xs text-slate-500 mt-1">ระบบจัดการปลดล็อกห้อง VIP เฉพาะบุคคล และจัดการผู้ใช้เรื้อน</p>
+                <p class="text-xs text-slate-500 mt-1">ระบบจัดการปลดล็อกห้อง VIP เฉพาะบุคคล และจัดการผู้ใช้งาน</p>
             </div>
             <a href="/" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-lg font-bold transition">
                 ← กลับหน้าหลัก
@@ -42,13 +42,13 @@
 
         <div id="admin-content" class="hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- ซ้าย: คนออนไลน์ -->
+                <!-- ซ้าย: รายชื่อผู้ใช้ทั้งหมด -->
                 <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl h-fit">
-                    <h2 class="text-base font-bold font-gaming text-rose-400 mb-2 flex items-center justify-between">
-                        <span>🔴 ONLINE USERS</span>
-                        <span id="user-count-badge" class="bg-rose-500/20 text-rose-400 text-xs px-2 py-0.5 rounded border border-rose-500/30">0</span>
+                    <h2 class="text-base font-bold font-gaming text-amber-400 mb-2 flex items-center justify-between">
+                        <span>👥 ALL SYSTEM USERS</span>
+                        <span id="user-count-badge" class="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded border border-amber-500/30">0</span>
                     </h2>
-                    <p class="text-[11px] text-amber-400/90 mb-4">💡 คลิกที่ชื่อผู้ใช้ด้านล่าง เพื่อเลือกคนที่จะปลดล็อกห้องให้</p>
+                    <p class="text-[11px] text-slate-400 mb-4">🟢 จุดเขียว = ออนไลน์ | 🔴 จุดแดง = ออฟไลน์ (คลิกที่ชื่อเพื่อเลือกปลดล็อกห้องให้ได้เลย)</p>
                     <div id="online-users-list" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
                 </div>
 
@@ -157,13 +157,23 @@
             list.innerHTML = '';
 
             if (currentOnlineUsers.length === 0) {
-                list.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">ไม่มีผู้ใช้ออนไลน์</p>`;
+                list.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">ไม่มีผู้ใช้ในระบบ</p>`;
                 return;
             }
 
             currentOnlineUsers.forEach(u => {
                 const item = document.createElement('div');
                 const isSelected = selectedUser && selectedUser.id === u.id;
+                
+                // สัญลักษณ์จุด สีเขียว (ออนไลน์) / สีแดง (ออฟไลน์)
+                const statusDot = u.isOnline 
+                    ? `<span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] mr-1.5" title="ออนไลน์"></span>`
+                    : `<span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] mr-1.5" title="ออฟไลน์"></span>`;
+
+                const kickBtn = u.isOnline 
+                    ? `<button onclick="kickUser('${u.id}')" class="bg-rose-950/80 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 px-2 py-1 rounded font-bold font-gaming transition">เตะออก</button>`
+                    : `<span class="text-[10px] text-slate-600 font-mono">OFFLINE</span>`;
+
                 item.className = `bg-slate-950 border border-slate-800 p-2.5 rounded-xl flex justify-between items-center text-xs cursor-pointer hover:border-amber-500/50 transition ${isSelected ? 'user-card-selected' : ''}`;
                 
                 item.onclick = (e) => {
@@ -172,15 +182,16 @@
                 };
 
                 item.innerHTML = `
-                    <div>
-                        <div class="font-bold ${isSelected ? 'text-amber-400' : 'text-slate-200'}">
-                            ${isSelected ? '👉 ' : ''}👤 ${u.username}
+                    <div class="flex items-center">
+                        ${statusDot}
+                        <div>
+                            <div class="font-bold ${isSelected ? 'text-amber-400' : 'text-slate-200'}">
+                                ${isSelected ? '👉 ' : ''}👤 ${u.username}
+                            </div>
+                            <div class="text-[10px] text-slate-500 font-mono">ID: ${u.id}</div>
                         </div>
-                        <div class="text-[10px] text-slate-500 font-mono">ID: ${u.id}</div>
                     </div>
-                    <button onclick="kickUser('${u.id}')" class="bg-rose-950/80 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 px-2 py-1 rounded font-bold font-gaming transition">
-                        เตะออก
-                    </button>
+                    ${kickBtn}
                 `;
                 list.appendChild(item);
             });
@@ -251,7 +262,7 @@
                     }
                 } else {
                     actionButton = `
-                        <button onclick="alert('กรุณาคลิกเลือกผู้ใช้ออนไลน์จากแถบซ้ายมือก่อน!')" 
+                        <button onclick="alert('กรุณาคลิกเลือกผู้ใช้งานจากแถบซ้ายมือก่อน!')" 
                             class="w-full mt-2 bg-slate-800 text-slate-500 border border-slate-700/50 rounded py-1 font-bold font-gaming transition cursor-pointer">
                             🔓 คลิกเลือกคนทางซ้ายเพื่อปลดล็อก
                         </button>

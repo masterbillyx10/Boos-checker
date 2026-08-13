@@ -41,7 +41,6 @@
         </div>
 
         <div id="admin-content" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- ซ้าย: คนออนไลน์ -->
             <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl h-fit">
                 <h2 class="text-base font-bold font-gaming text-rose-400 mb-2 flex items-center justify-between">
                     <span>🔴 ONLINE USERS</span>
@@ -51,9 +50,7 @@
                 <div id="online-users-list" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
             </div>
 
-            <!-- ขวา: ตารางห้อง VIP -->
             <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                <!-- แถบโชว์คนถูกเลือก -->
                 <div id="selected-user-banner" class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4 flex justify-between items-center text-xs">
                     <span class="text-slate-300">
                         👤 ผู้ใช้ที่เลือกอยู่: <span id="selected-username-text" class="text-amber-400 font-bold font-gaming">ยังไม่ได้เลือก (กรุณาคลิกเลือกผู้ใช้ทางซ้าย)</span>
@@ -191,7 +188,6 @@
                 let actionButton = '';
                 
                 if (!isLocked) {
-                    // ถ้าห้องเปิดสาธารณะอยู่ -> ขึ้นปุ่มสั่งล็อคห้องกลับคืน
                     actionButton = `
                         <button onclick="toggleGlobalLock(${boss.id}, true)" 
                             class="w-full mt-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 rounded py-1 font-bold font-gaming transition">
@@ -199,7 +195,6 @@
                         </button>
                     `;
                 } else if (selectedUser) {
-                    // ถ้าห้องล็อค และเลือกผู้ใช้รายบุคคลอยู่
                     if (isSelectedUserAllowed) {
                         actionButton = `
                             <button onclick="revokeUserRoom(${boss.id}, '${selectedUser.id}')" 
@@ -216,7 +211,6 @@
                         `;
                     }
                 } else {
-                    // ถ้าห้องล็อค แต่ยังไม่ได้เลือกผู้ใช้
                     actionButton = `
                         <button onclick="alert('กรุณาคลิกเลือกผู้ใช้ออนไลน์จากแถบซ้ายมือก่อน!')" 
                             class="w-full mt-2 bg-slate-800 text-slate-500 border border-slate-700/50 rounded py-1 font-bold font-gaming transition cursor-pointer">

@@ -18,6 +18,7 @@ const LOCATIONS = [
 const RESPAWN_MINUTES = 60;
 let activeUsers = new Map();
 
+// เคลียร์คนออนไลน์ที่หายไปเกิน 10 วินาที
 setInterval(() => {
     const now = Date.now();
     for (const [id, user] of activeUsers.entries()) {
@@ -28,10 +29,10 @@ setInterval(() => {
 let bosses = [];
 let idCounter = 1;
 
-// สร้างห้อง Official 001 - 050 (001-010 ฟรี / 011-050 ล็อค)
+// Official 50 (001-010 ฟรี / 011-050 ล็อค)
 for (let i = 1; i <= 50; i++) {
     const serverName = `Official ${String(i).padStart(3, '0')}`;
-    const lockedStatus = i > 10; // ห้องเกิน 10 ให้ล็อคทั้งหมด
+    const lockedStatus = i > 10; 
     LOCATIONS.forEach(loc => {
         bosses.push({
             id: idCounter++,
@@ -48,10 +49,10 @@ for (let i = 1; i <= 50; i++) {
     });
 }
 
-// สร้างห้อง Premium 001 - 050 (001-010 ฟรี / 011-050 ล็อค)
+// Premium 50 (001-010 ฟรี / 011-050 ล็อค)
 for (let i = 1; i <= 50; i++) {
     const serverName = `Premium ${String(i).padStart(3, '0')}`;
-    const lockedStatus = i > 10; // ห้องเกิน 10 ให้ล็อคทั้งหมด
+    const lockedStatus = i > 10;
     LOCATIONS.forEach(loc => {
         bosses.push({
             id: idCounter++,
@@ -68,13 +69,18 @@ for (let i = 1; i <= 50; i++) {
     });
 }
 
+// ---------------- API สำหรับหน้าเว็บหลัก ----------------
+
 app.get('/api/bosses', (req, res) => {
     const { serverType, location, userId, username } = req.query;
 
     if (userId) {
+        // ดักจับชื่อให้แม่นยำขึ้น กันไม่ให้ขึ้น Guest หากส่งค่ามา
+        const finalName = (username && username !== 'null' && username !== 'undefined' && username.trim() !== '') ? username : "VALENTILE";
+        
         activeUsers.set(userId, {
             id: userId,
-            username: username || "Guest",
+            username: finalName,
             lastSeen: Date.now()
         });
     }
@@ -92,7 +98,7 @@ app.get('/api/bosses', (req, res) => {
 
 app.post('/api/bosses/spawn', (req, res) => {
     const { id, username } = req.body;
-    const boss = bosses.find(b => b.id === id);
+    const boss = bosses.find(b => b.id === Number(id)); // แปลงเป็น Number กันพลาด
     
     if (boss) {
         if (boss.isLocked) {
@@ -105,7 +111,7 @@ app.post('/api/bosses/spawn', (req, res) => {
         const now = new Date();
         boss.killedAt = now.toISOString();
         boss.nextSpawn = new Date(now.getTime() + RESPAWN_MINUTES * 60000).toISOString();
-        boss.createdBy = username || "Guest";
+        boss.createdBy = username || "VALENTILE";
         boss.previousNextSpawn = null;
         boss.resetAt = null;
         return res.json({ success: true, boss });
@@ -115,7 +121,7 @@ app.post('/api/bosses/spawn', (req, res) => {
 
 app.post('/api/bosses/reset', (req, res) => {
     const { id } = req.body;
-    const boss = bosses.find(b => b.id === id);
+    const boss = bosses.find(b => b.id === Number(id));
     if (boss) {
         if (boss.nextSpawn) {
             boss.previousNextSpawn = boss.nextSpawn;
@@ -131,7 +137,7 @@ app.post('/api/bosses/reset', (req, res) => {
 
 app.post('/api/bosses/undo', (req, res) => {
     const { id, username } = req.body;
-    const boss = bosses.find(b => b.id === id);
+    const boss = bosses.find(b => b.id === Number(id));
     if (boss) {
         if (!boss.previousNextSpawn || !boss.resetAt) {
             return res.status(400).json({ success: false, message: "ไม่มีข้อมูลสำหรับ Undo" });
@@ -146,7 +152,7 @@ app.post('/api/bosses/undo', (req, res) => {
         }
 
         boss.nextSpawn = boss.previousNextSpawn;
-        boss.createdBy = username || "Guest";
+        boss.createdBy = username || "VALENTILE";
         boss.previousNextSpawn = null;
         boss.resetAt = null;
         return res.json({ success: true, boss });
@@ -154,28 +160,22 @@ app.post('/api/bosses/undo', (req, res) => {
     res.status(404).json({ success: false, message: "Boss not found" });
 });
 
-// Admin APIs
+// ---------------- API สำหรับ ADMIN ----------------
+
 app.post('/api/admin/data', (req, res) => {
     const { adminKey } = req.body;
-    if (adminKey !== ADMIN_KEY) {
-        return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
-    }
+    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
 
     const onlineList = Array.from(activeUsers.values());
-    res.json({
-        success: true,
-        onlineUsers: onlineList,
-        bosses: bosses
-    });
+    res.json({ success: true, onlineUsers: onlineList, bosses: bosses });
 });
 
 app.post('/api/admin/toggle-lock', (req, res) => {
     const { adminKey, bossId, isLocked } = req.body;
-    if (adminKey !== ADMIN_KEY) {
-        return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
-    }
+    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
 
-    const boss = bosses.find(b => b.id === bossId);
+    // แก้บั๊ก: บังคับแปลง bossId เป็น Number
+    const boss = bosses.find(b => b.id === Number(bossId));
     if (boss) {
         boss.isLocked = isLocked;
         return res.json({ success: true, message: `อัปเดตสถานะห้องเรียบร้อย`, boss });
@@ -183,15 +183,22 @@ app.post('/api/admin/toggle-lock', (req, res) => {
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
 });
 
+// ฟังก์ชันใหม่: ปลดล็อคห้องทั้งหมดรวดเดียว
+app.post('/api/admin/unlock-all', (req, res) => {
+    const { adminKey } = req.body;
+    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+
+    bosses.forEach(b => b.isLocked = false);
+    res.json({ success: true, message: "ปลดล็อคห้องทั้งหมดเรียบร้อยแล้ว!" });
+});
+
 app.post('/api/admin/kick-user', (req, res) => {
     const { adminKey, targetUserId } = req.body;
-    if (adminKey !== ADMIN_KEY) {
-        return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
-    }
+    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
 
     if (activeUsers.has(targetUserId)) {
         activeUsers.delete(targetUserId);
-        return res.json({ success: true, message: `เตะผู้ใช้เรียบร้อย` });
+        return res.json({ success: true, message: `เตะผู้ใช้ออกเรียบร้อย` });
     }
     res.status(404).json({ success: false, message: "ไม่พบผู้ใช้ในระบบ" });
 });

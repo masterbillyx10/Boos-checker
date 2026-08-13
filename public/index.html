@@ -49,8 +49,13 @@
         <h1 class="text-3xl md:text-4xl font-black font-gaming tracking-wider text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.4)]">
             WARZ BOSS TIMER
         </h1>
-        <div class="inline-flex items-center gap-2 mt-2 px-3 py-1 bg-slate-900 border border-slate-800 rounded-md text-xs text-slate-400 font-mono">
-            <span>🛡️ OPERATOR: ONLINE SYSTEM</span>
+        
+        <div class="inline-flex items-center gap-2 mt-2 px-3 py-1 bg-slate-900 border border-slate-800 rounded-md text-xs font-gaming">
+            <span class="relative flex h-2.5 w-2.5">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span class="text-slate-300">ONLINE: <span id="online-count" class="text-emerald-400 font-bold">1</span> USER(S)</span>
         </div>
     </header>
 
@@ -97,10 +102,18 @@
     </main>
 
     <script>
+        let myUserId = localStorage.getItem('warz_user_id');
+        if (!myUserId) {
+            myUserId = 'user_' + Math.random().toString(36).substring(2, 9);
+            localStorage.setItem('warz_user_id', myUserId);
+        }
+
+        // ตัวแปรจำลองชื่อ Discord (เดี๋ยวตอนทำ Discord OAuth2 แค่เปลี่ยนค่าตรงนี้ให้รับจาก Discord)
+        let currentDiscordUser = localStorage.getItem('discord_username') || "VALENTILE";
+
         let currentType = 'Premium';
         let currentCity = 'Norad Military Base';
         
-        // ตัวแปรใหม่สำหรับเก็บข้อมูลและซิงค์เวลา
         let bossesData = [];
         let serverTimeOffset = 0;
 
@@ -133,14 +146,17 @@
         }
 
         async function fetchBosses() {
-            const url = `/api/bosses?serverType=${currentType}&location=${encodeURIComponent(currentCity)}`;
+            const url = `/api/bosses?serverType=${currentType}&location=${encodeURIComponent(currentCity)}&userId=${myUserId}`;
             try {
                 const res = await fetch(url);
                 const data = await res.json();
                 
-                // คำนวณความห่างของเวลาคอมผู้ใช้ กับเวลาเซิร์ฟเวอร์
                 serverTimeOffset = data.serverTime - Date.now();
                 bossesData = data.bosses;
+                
+                if (data.onlineCount) {
+                    document.getElementById('online-count').innerText = data.onlineCount;
+                }
                 
                 renderBossGrid();
             } catch(e) {
@@ -152,9 +168,9 @@
             await fetch('/api/bosses/spawn', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id })
+                body: JSON.stringify({ id, username: currentDiscordUser })
             });
-            fetchBosses(); // โหลดข้อมูลใหม่ทันที
+            fetchBosses();
         }
 
         async function resetBoss(id) {
@@ -170,14 +186,13 @@
             const res = await fetch('/api/bosses/undo', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id })
+                body: JSON.stringify({ id, username: currentDiscordUser })
             });
             const data = await res.json();
             if (!data.success) alert(data.message);
             fetchBosses();
         }
 
-        // ฟังก์ชันวาด UI ทำงานแยกต่างหากทุก 1 วินาที (ลื่นไหล ไม่รอเน็ต)
         function renderBossGrid() {
             const container = document.getElementById('boss-grid');
             if (bossesData.length === 0) return;
@@ -192,7 +207,6 @@
                 let inUse = false;
                 let canUndo = false;
 
-                // ใช้เวลาปัจจุบัน บวกกับส่วนต่างของเซิร์ฟเวอร์ เพื่อให้เวลาตรงกัน 100%
                 const now = Date.now() + serverTimeOffset;
 
                 if (boss.nextSpawn) {
@@ -201,13 +215,8 @@
 
                     if (diff > 0) {
                         inUse = true;
-                        
                         let totalSeconds = Math.floor(diff / 1000);
-                        
-                        // ถ้าระบบคำนวณได้ 3600 (01:00:00) หรือเกิน ให้เริ่มที่ 3599 (59:59) ทันทีเพื่อความลื่นไหล
-                        if (totalSeconds >= 3600) {
-                            totalSeconds = 3599; 
-                        }
+                        if (totalSeconds >= 3600) totalSeconds = 3599;
 
                         const hours = Math.floor(totalSeconds / 3600);
                         const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -250,13 +259,18 @@
                     ? "bg-rose-950/80 hover:bg-rose-600/30 text-rose-400 border border-rose-500/40 hover:border-rose-500 cursor-pointer" 
                     : "bg-slate-900 text-slate-700 border border-slate-800 cursor-not-allowed opacity-40";
 
+                // เปลี่ยนป้าย IN USE เป็นชื่อคนคีย์เวลา
+                const userBadge = inUse && boss.createdBy 
+                    ? `<span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-bold max-w-[110px] truncate">👤 ${boss.createdBy}</span>` 
+                    : '';
+
                 card.innerHTML = `
                     <div>
                         <div class="flex justify-between items-center mb-1">
                             <span class="text-xs font-bold font-gaming text-slate-300 tracking-wider">
                                 TH ${boss.serverName.toUpperCase()}
                             </span>
-                            ${inUse ? '<span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-bold">IN USE</span>' : ''}
+                            ${userBadge}
                         </div>
                         
                         <div class="text-2xl font-black font-gaming ${timerColor} my-3 tracking-widest drop-shadow-[0_0_8px_rgba(16,185,129,0.2)]">
@@ -280,13 +294,8 @@
             });
         }
 
-        // แยกระบบประมวลผล : อัปเดตหน้าจอทุก 1 วินาทีจากข้อมูลในเครื่อง (ไม่หน่วง)
         setInterval(renderBossGrid, 1000);
-        
-        // ดึงข้อมูลใหม่จาก Server ทุก 5 วินาที เพื่อให้ตรงกับเพื่อนคนอื่น
-        setInterval(fetchBosses, 5000);
-        
-        // โหลดครั้งแรก
+        setInterval(fetchBosses, 3000);
         fetchBosses();
     </script>
 </body>

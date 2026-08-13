@@ -3,85 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบเช็คเวลาเกิดบอส</title>
+    <title>WARZ BOSS TIMER</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: #0b0e14;
+        }
+        .font-gaming {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .glass-card {
+            background: rgba(18, 24, 38, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        .active-tab-red {
+            background: rgba(225, 29, 72, 0.15);
+            border: 1px solid #e11d48 !important;
+            color: #f43f5e !important;
+            box-shadow: 0 0 15px rgba(225, 29, 72, 0.3);
+        }
+        .active-tab-blue {
+            background: rgba(14, 165, 233, 0.15);
+            border: 1px solid #0ea5e9 !important;
+            color: #38bdf8 !important;
+            box-shadow: 0 0 15px rgba(14, 165, 233, 0.3);
+        }
+        .active-city {
+            border: 1px solid #38bdf8 !important;
+            background: rgba(15, 23, 42, 0.9);
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+        }
+    </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen p-4 md:p-6">
-    <div class="max-w-6xl mx-auto">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-emerald-400">⚔️ ระบบเช็คเวลาเกิดบอส (100 เซิร์ฟเวอร์)</h1>
-            <p class="text-slate-400 text-sm mt-1">Official (50 ช่อง) | Premium (50 ช่อง) | 4 จุดเกิดบอสหลัก</p>
-        </header>
+<body class="text-slate-200 min-h-screen pb-12">
 
-        <!-- แผงควบคุมระบบกรอง (Filter Bar) -->
-        <div class="bg-slate-800 p-4 rounded-xl mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 border border-slate-700">
-            <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">ประเภทเซิร์ฟเวอร์</label>
-                <select id="filter-type" onchange="updateServerOptions(); fetchBosses();" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-emerald-500">
-                    <option value="All">ทั้งหมด (Official & Premium)</option>
-                    <option value="Official">Official</option>
-                    <option value="Premium">Premium</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">เลือกห้อง / เซิร์ฟเวอร์</label>
-                <select id="filter-server" onchange="fetchBosses();" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-emerald-500">
-                    <option value="All">ทุกห้อง</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-xs font-semibold text-slate-400 mb-1">เลือกเมือง / จุดเกิด</label>
-                <select id="filter-location" onchange="fetchBosses();" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:outline-none focus:border-emerald-500">
-                    <option value="All">ทุกจุดเกิดบอส</option>
-                    <option value="Norad Military Base">Norad Military Base</option>
-                    <option value="Ridgeway Airport">Ridgeway Airport</option>
-                    <option value="Crystal Lake Resort">Crystal Lake Resort</option>
-                    <option value="Campos City">Campos City</option>
-                </select>
-            </div>
+    <!-- Header Section -->
+    <header class="text-center pt-8 pb-4">
+        <h1 class="text-3xl md:text-4xl font-black font-gaming tracking-wider text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.4)]">
+            WARZ BOSS TIMER
+        </h1>
+        <div class="inline-flex items-center gap-2 mt-2 px-3 py-1 bg-slate-900 border border-slate-800 rounded-md text-xs text-slate-400 font-mono">
+            <span>🛡️ OPERATOR: GUEST [MEMBERS]</span>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4">
+        
+        <!-- 1. Server Type Tabs (Premium / Official) -->
+        <div class="flex justify-center gap-3 mb-6">
+            <button id="tab-premium" onclick="selectServerType('Premium')" 
+                class="active-tab-red px-6 py-2.5 rounded-lg text-sm font-bold font-gaming transition-all duration-200 border border-slate-800 text-slate-400 bg-slate-900/50">
+                PREMIUM SERVER (50ห้อง)
+            </button>
+            <button id="tab-official" onclick="selectServerType('Official')" 
+                class="px-6 py-2.5 rounded-lg text-sm font-bold font-gaming transition-all duration-200 border border-slate-800 text-slate-400 bg-slate-900/50">
+                OFFICIAL SERVER (50ห้อง)
+            </button>
         </div>
 
-        <!-- รายการบอส -->
-        <div id="boss-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <!-- Render บอสผ่าน JavaScript -->
+        <!-- 2. City Selector Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <button onclick="selectCity('Norad Military Base')" id="city-Norad Military Base" 
+                class="active-city glass-card p-3 rounded-lg text-center transition hover:bg-slate-800/80">
+                <div class="text-lg">🏢</div>
+                <div class="text-xs font-bold font-gaming mt-1">Norad Military Base</div>
+            </button>
+            <button onclick="selectCity('Ridgeway Airport')" id="city-Ridgeway Airport" 
+                class="glass-card p-3 rounded-lg text-center transition hover:bg-slate-800/80">
+                <div class="text-lg">✈️</div>
+                <div class="text-xs font-bold font-gaming mt-1">Ridgeway Airport</div>
+            </button>
+            <button onclick="selectCity('Crystal Lake Resort')" id="city-Crystal Lake Resort" 
+                class="glass-card p-3 rounded-lg text-center transition hover:bg-slate-800/80">
+                <div class="text-lg">🏠</div>
+                <div class="text-xs font-bold font-gaming mt-1">Crystal Lake Resort</div>
+            </button>
+            <button onclick="selectCity('Campos City')" id="city-Campos City" 
+                class="glass-card p-3 rounded-lg text-center transition hover:bg-slate-800/80">
+                <div class="text-lg">🏙️</div>
+                <div class="text-xs font-bold font-gaming mt-1">Campos City</div>
+            </button>
         </div>
-    </div>
+
+        <!-- Current Location Title -->
+        <div class="text-center mb-6">
+            <span class="text-rose-500 text-sm font-bold tracking-wide font-gaming inline-flex items-center gap-1.5">
+                📍 <span id="current-location-text">Norad Military Base</span>
+            </span>
+        </div>
+
+        <!-- 3. Boss Timer Grid -->
+        <div id="boss-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <!-- Dynamically Rendered Cards -->
+        </div>
+
+    </main>
 
     <script>
-        // สร้างรายชื่อตัวเลือกห้องในตัวกรอง
-        function updateServerOptions() {
-            const type = document.getElementById('filter-type').value;
-            const serverSelect = document.getElementById('filter-server');
-            serverSelect.innerHTML = '<option value="All">ทุกห้อง</option>';
+        let currentType = 'Premium';
+        let currentCity = 'Norad Military Base';
 
-            if (type === 'Official' || type === 'All') {
-                for (let i = 1; i <= 50; i++) {
-                    const name = `Official ${String(i).padStart(3, '0')}`;
-                    serverSelect.innerHTML += `<option value="${name}">${name}</option>`;
-                }
+        function selectServerType(type) {
+            currentType = type;
+            const btnPrem = document.getElementById('tab-premium');
+            const btnOff = document.getElementById('tab-official');
+
+            if (type === 'Premium') {
+                btnPrem.className = "active-tab-red px-6 py-2.5 rounded-lg text-sm font-bold font-gaming transition-all duration-200";
+                btnOff.className = "px-6 py-2.5 rounded-lg text-sm font-bold font-gaming transition-all duration-200 border border-slate-800 text-slate-400 bg-slate-900/50";
+            } else {
+                btnOff.className = "active-tab-blue px-6 py-2.5 rounded-lg text-sm font-bold font-gaming transition-all duration-200";
+                btnPrem.className = "px-6 py-2.5 rounded-lg text-sm font-bold font-gaming transition-all duration-200 border border-slate-800 text-slate-400 bg-slate-900/50";
             }
-            if (type === 'Premium' || type === 'All') {
-                for (let i = 1; i <= 50; i++) {
-                    const name = `Premium ${String(i).padStart(3, '0')}`;
-                    serverSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            fetchBosses();
+        }
+
+        function selectCity(cityName) {
+            currentCity = cityName;
+            document.getElementById('current-location-text').innerText = cityName;
+
+            const cities = ['Norad Military Base', 'Ridgeway Airport', 'Crystal Lake Resort', 'Campos City'];
+            cities.forEach(c => {
+                const el = document.getElementById(`city-${c}`);
+                if (c === cityName) {
+                    el.classList.add('active-city');
+                } else {
+                    el.classList.remove('active-city');
                 }
-            }
+            });
+            fetchBosses();
         }
 
         async function fetchBosses() {
-            const type = document.getElementById('filter-type').value;
-            const server = document.getElementById('filter-server').value;
-            const location = document.getElementById('filter-location').value;
-
-            let query = [];
-            if (type !== 'All') query.push(`serverType=${type}`);
-            if (server !== 'All') query.push(`serverName=${encodeURIComponent(server)}`);
-            if (location !== 'All') query.push(`location=${encodeURIComponent(location)}`);
-
-            const url = '/api/bosses' + (query.length ? '?' + query.join('&') : '');
+            const url = `/api/bosses?serverType=${currentType}&location=${encodeURIComponent(currentCity)}`;
             const res = await fetch(url);
             const data = await res.json();
-            renderBosses(data);
+            renderBossGrid(data);
         }
 
         async function killBoss(id) {
@@ -102,65 +164,59 @@
             fetchBosses();
         }
 
-        function renderBosses(bosses) {
-            const container = document.getElementById('boss-list');
+        function renderBossGrid(bosses) {
+            const container = document.getElementById('boss-grid');
             container.innerHTML = '';
-
-            if (bosses.length === 0) {
-                container.innerHTML = `<div class="col-span-full text-center py-10 text-slate-500">ไม่พบข้อมูลบอสตรงกับเงื่อนไขที่เลือก</div>`;
-                return;
-            }
 
             bosses.forEach(boss => {
                 const card = document.createElement('div');
-                card.className = "bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-col justify-between shadow-md hover:border-slate-600 transition";
+                card.className = "glass-card rounded-lg p-4 flex flex-col justify-between text-center relative overflow-hidden group";
 
-                const isPremium = boss.serverType === 'Premium';
-                const tagColor = isPremium ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+                let timerDisplay = "00:00:00";
+                let timerColor = "text-sky-500/40";
+                let isAlive = false;
 
-                let statusHTML = '';
-                let timerHTML = '';
-
-                if (!boss.nextSpawn) {
-                    statusHTML = `<span class="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded border border-emerald-500/30 font-semibold">พร้อมเกิด</span>`;
-                    timerHTML = `<div class="text-xl font-bold my-3 text-slate-500">-- : -- : --</div>`;
-                } else {
+                if (boss.nextSpawn) {
                     const now = new Date().getTime();
                     const spawnTime = new Date(boss.nextSpawn).getTime();
                     const diff = spawnTime - now;
 
                     if (diff <= 0) {
-                        statusHTML = `<span class="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded border border-emerald-500/30 font-semibold animate-pulse">เกิดแล้ว!</span>`;
-                        timerHTML = `<div class="text-xl font-bold my-3 text-emerald-400">READY</div>`;
+                        timerDisplay = "READY!";
+                        timerColor = "text-emerald-400 font-bold animate-pulse";
+                        isAlive = true;
                     } else {
-                        statusHTML = `<span class="bg-rose-500/20 text-rose-400 text-xs px-2 py-0.5 rounded border border-rose-500/30 font-semibold">คูลดาวน์</span>`;
-                        
                         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                         const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-                        
-                        const formatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-                        timerHTML = `<div class="text-xl font-bold my-3 text-amber-400 font-mono">${formatted}</div>`;
+                        timerDisplay = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                        timerColor = "text-amber-400 font-bold";
                     }
                 }
 
                 card.innerHTML = `
                     <div>
-                        <div class="flex justify-between items-start mb-2">
-                            <div>
-                                <span class="inline-block text-[10px] px-1.5 py-0.5 rounded border font-bold ${tagColor} mb-1">${boss.serverName}</span>
-                                <h2 class="text-base font-bold text-white leading-tight">${boss.location}</h2>
-                            </div>
-                            ${statusHTML}
+                        <div class="text-xs font-bold font-gaming text-slate-300 tracking-wider mb-2">
+                            TH ${boss.serverName.toUpperCase()}
                         </div>
-                        ${timerHTML}
+                        
+                        <div class="text-2xl font-black font-gaming ${timerColor} my-3 tracking-widest drop-shadow">
+                            ${timerDisplay}
+                        </div>
                     </div>
-                    <div class="flex gap-2 mt-2">
-                        <button onclick="killBoss(${boss.id})" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-1.5 rounded-lg text-xs transition">
-                            บันทึกตาย
+
+                    <div class="grid grid-cols-3 gap-1.5 mt-2 border-t border-slate-800/80 pt-3">
+                        <button onclick="killBoss(${boss.id})" 
+                            class="bg-emerald-950/60 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 hover:border-emerald-500 rounded py-1 text-[11px] font-bold font-gaming transition">
+                            SPAWN
                         </button>
-                        <button onclick="resetBoss(${boss.id})" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold px-2.5 py-1.5 rounded-lg text-xs transition">
-                            รีเซ็ต
+                        <button onclick="resetBoss(${boss.id})" 
+                            class="bg-slate-900 hover:bg-slate-800 text-slate-500 border border-slate-800 rounded py-1 text-[11px] font-bold font-gaming transition">
+                            UNDO
+                        </button>
+                        <button onclick="resetBoss(${boss.id})" 
+                            class="bg-slate-900 hover:bg-slate-800 text-slate-500 border border-slate-800 rounded py-1 text-[11px] font-bold font-gaming transition">
+                            RESET
                         </button>
                     </div>
                 `;
@@ -168,8 +224,7 @@
             });
         }
 
-        // เริ่มต้นสร้างตัวเลือก Dropdown และเริ่มนับถอยหลัง
-        updateServerOptions();
+        // Auto Refresh ทุก 1 วินาที
         setInterval(fetchBosses, 1000);
         fetchBosses();
     </script>

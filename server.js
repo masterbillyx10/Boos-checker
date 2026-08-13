@@ -3,6 +3,9 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ตั้งรหัสผ่านสำหรับเข้าหน้าแอดมิน
+const ADMIN_KEY = process.env.ADMIN_KEY || "VALENTILE1234";
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -18,39 +21,25 @@ let activeUsers = new Map();
 
 setInterval(() => {
     const now = Date.now();
-    for (const [id, lastSeen] of activeUsers.entries()) {
-        if (now - lastSeen > 10000) activeUsers.delete(id);
+    for (const [id, user] of activeUsers.entries()) {
+        if (now - user.lastSeen > 10000) activeUsers.delete(id);
     }
 }, 3000);
 
 let bosses = [];
 let idCounter = 1;
 
+// Official 50 (1-10 ฟรี / 11-50 ล็อค)
 for (let i = 1; i <= 50; i++) {
     const serverName = `Official ${String(i).padStart(3, '0')}`;
+    const isFree = i <= 10;
     LOCATIONS.forEach(loc => {
         bosses.push({
             id: idCounter++,
             serverType: "Official",
             serverName: serverName,
             location: loc,
-            killedAt: null,
-            nextSpawn: null,
-            previousNextSpawn: null,
-            resetAt: null,
-            createdBy: null // เพิ่มช่องเก็บชื่อ Discord
-        });
-    });
-}
-
-for (let i = 1; i <= 50; i++) {
-    const serverName = `Premium ${String(i).padStart(3, '0')}`;
-    LOCATIONS.forEach(loc => {
-        bosses.push({
-            id: idCounter++,
-            serverType: "Premium",
-            serverName: serverName,
-            location: loc,
+            isLocked: !isFree,
             killedAt: null,
             nextSpawn: null,
             previousNextSpawn: null,
@@ -60,10 +49,37 @@ for (let i = 1; i <= 50; i++) {
     });
 }
 
-app.get('/api/bosses', (req, res) => {
-    const { serverType, location, userId } = req.query;
+// Premium 50 (1-10 ฟรี / 11-50 ล็อค)
+for (let i = 1; i <= 50; i++) {
+    const serverName = `Premium ${String(i).padStart(3, '0')}`;
+    const isFree = i <= 10;
+    LOCATIONS.forEach(loc => {
+        bosses.push({
+            id: idCounter++,
+            serverType: "Premium",
+            serverName: serverName,
+            location: loc,
+            isLocked: !isFree,
+            killedAt: null,
+            nextSpawn: null,
+            previousNextSpawn: null,
+            resetAt: null,
+            createdBy: null
+        });
+    });
+}
 
-    if (userId) activeUsers.set(userId, Date.now());
+// API ดึงข้อมูลบอส + นับจำนวนคนออนไลน์
+app.get('/api/bosses', (req, res) => {
+    const { serverType, location, userId, username } = req.query;
+
+    if (userId) {
+        activeUsers.set(userId, {
+            id: userId,
+            username: username || "Guest",
+            lastSeen: Date.now()
+        });
+    }
 
     let result = bosses;
     if (serverType) result = result.filter(b => b.serverType === serverType);
@@ -76,12 +92,14 @@ app.get('/api/bosses', (req, res) => {
     });
 });
 
-// รับ username เพิ่มเวลาคีย์ SPAWN
 app.post('/api/bosses/spawn', (req, res) => {
     const { id, username } = req.body;
     const boss = bosses.find(b => b.id === id);
     
     if (boss) {
+        if (boss.isLocked) {
+            return res.status(403).json({ success: false, message: "ห้องนี้ต้องได้รับการปลดล็อก VIP" });
+        }
         if (boss.nextSpawn && new Date(boss.nextSpawn) > new Date()) {
             return res.status(400).json({ success: false, message: "ช่องนี้กำลังใช้งานอยู่" });
         }
@@ -89,7 +107,7 @@ app.post('/api/bosses/spawn', (req, res) => {
         const now = new Date();
         boss.killedAt = now.toISOString();
         boss.nextSpawn = new Date(now.getTime() + RESPAWN_MINUTES * 60000).toISOString();
-        boss.createdBy = username || "Guest"; // บันทึกชื่อผู้กด
+        boss.createdBy = username || "Guest";
         boss.previousNextSpawn = null;
         boss.resetAt = null;
         return res.json({ success: true, boss });
@@ -107,7 +125,7 @@ app.post('/api/bosses/reset', (req, res) => {
         }
         boss.killedAt = null;
         boss.nextSpawn = null;
-        boss.createdBy = null; // เคลียร์ชื่อคนคีย์
+        boss.createdBy = null;
         return res.json({ success: true, boss });
     }
     res.status(404).json({ success: false, message: "Boss not found" });
@@ -136,6 +154,54 @@ app.post('/api/bosses/undo', (req, res) => {
         return res.json({ success: true, boss });
     }
     res.status(404).json({ success: false, message: "Boss not found" });
+});
+
+// ==================== ADMIN API (แก้ไขแล้ว) ====================
+
+app.post('/api/admin/data', (req, res) => {
+    const { adminKey } = req.body;
+    if (adminKey !== ADMIN_KEY) {
+        return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+    }
+
+    // แปลง Map เป็น Array อย่างถูกต้อง
+    const onlineList = [];
+    for (const [id, user] of activeUsers.entries()) {
+        onlineList.push(user);
+    }
+
+    res.json({
+        success: true,
+        onlineUsers: onlineList,
+        bosses: bosses
+    });
+});
+
+app.post('/api/admin/toggle-lock', (req, res) => {
+    const { adminKey, bossId, isLocked } = req.body;
+    if (adminKey !== ADMIN_KEY) {
+        return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+    }
+
+    const boss = bosses.find(b => b.id === bossId);
+    if (boss) {
+        boss.isLocked = isLocked;
+        return res.json({ success: true, message: `อัปเดตห้อง ${boss.serverName} (${boss.location}) เรียบร้อย` });
+    }
+    res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
+});
+
+app.post('/api/admin/kick-user', (req, res) => {
+    const { adminKey, targetUserId } = req.body;
+    if (adminKey !== ADMIN_KEY) {
+        return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+    }
+
+    if (activeUsers.has(targetUserId)) {
+        activeUsers.delete(targetUserId);
+        return res.json({ success: true, message: `เตะผู้ใช้ ID: ${targetUserId} ออกเรียบร้อย` });
+    }
+    res.status(404).json({ success: false, message: "ไม่พบผู้ใช้นี้ในระบบ" });
 });
 
 app.listen(PORT, () => {

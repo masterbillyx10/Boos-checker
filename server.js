@@ -6,36 +6,81 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ข้อมูลบอสในระบบ (ระยะเวลาเกิดเป็นนาที)
-let bosses = [
-    { id: 1, name: "Boss Alpha", respawnMinutes: 60, killedAt: null, nextSpawn: null },
-    { id: 2, name: "Boss Beta", respawnMinutes: 120, killedAt: null, nextSpawn: null },
-    { id: 3, name: "Boss Gamma", respawnMinutes: 180, killedAt: null, nextSpawn: null }
+// จุดเกิดบอส 4 เมืองหลัก
+const LOCATIONS = [
+    "Norad Military Base",
+    "Ridgeway Airport",
+    "Crystal Lake Resort",
+    "Campos City"
 ];
 
-// API ดึงสถานะบอสทั้งหมด
+// ระยะเวลาคูลดาวน์บอส (ตั้งไว้ 120 นาที หรือปรับเปลี่ยนตามเกมจริงได้)
+const RESPAWN_MINUTES = 120; 
+
+// สร้างรายการบอสสำหรับ 50 Official + 50 Premium
+let bosses = [];
+let idCounter = 1;
+
+// สร้างเซิร์ฟเวอร์ Official 001 - 050
+for (let i = 1; i <= 50; i++) {
+    const serverName = `Official ${String(i).padStart(3, '0')}`;
+    LOCATIONS.forEach(loc => {
+        bosses.push({
+            id: idCounter++,
+            serverType: "Official",
+            serverName: serverName,
+            location: loc,
+            killedAt: null,
+            nextSpawn: null
+        });
+    });
+}
+
+// สร้างเซิร์ฟเวอร์ Premium 001 - 050
+for (let i = 1; i <= 50; i++) {
+    const serverName = `Premium ${String(i).padStart(3, '0')}`;
+    LOCATIONS.forEach(loc => {
+        bosses.push({
+            id: idCounter++,
+            serverType: "Premium",
+            serverName: serverName,
+            location: loc,
+            killedAt: null,
+            nextSpawn: null
+        });
+    });
+}
+
+// API ดึงข้อมูลบอสทั้งหมด (หรือกรองตาม Query)
 app.get('/api/bosses', (req, res) => {
-    res.json(bosses);
+    let result = bosses;
+    const { serverType, serverName, location } = req.query;
+
+    if (serverType) result = result.filter(b => b.serverType === serverType);
+    if (serverName) result = result.filter(b => b.serverName === serverName);
+    if (location) result = result.filter(b => b.location === location);
+
+    res.json(result);
 });
 
 // API บันทึกการตายของบอส
 app.post('/api/bosses/kill', (req, res) => {
-    const { id } = req.body;
+    const { id, customMinutes } = req.body;
     const boss = bosses.find(b => b.id === id);
     
     if (boss) {
         const now = new Date();
+        const cooldown = customMinutes ? parseInt(customMinutes) : RESPAWN_MINUTES;
+        
         boss.killedAt = now.toISOString();
-        // คำนวณเวลาเกิดรอบถัดไป
-        const nextSpawnTime = new Date(now.getTime() + boss.respawnMinutes * 60000);
-        boss.nextSpawn = nextSpawnTime.toISOString();
+        boss.nextSpawn = new Date(now.getTime() + cooldown * 60000).toISOString();
         return res.json({ success: true, boss });
     }
     
     res.status(404).json({ success: false, message: "Boss not found" });
 });
 
-// API รีเซ็ตสถานะบอส
+// API รีเซ็ตบอส
 app.post('/api/bosses/reset', (req, res) => {
     const { id } = req.body;
     const boss = bosses.find(b => b.id === id);

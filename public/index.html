@@ -26,7 +26,7 @@
             border-color: #ff6b00;
         }
 
-        /* กรอบสีส้มตามภาพตัวอย่าง */
+        /* กรอบสีส้ม */
         .orange-bracket {
             position: relative;
             border-left: 2px solid #ff6b00;
@@ -87,7 +87,7 @@
 </head>
 <body class="min-h-screen relative flex flex-col justify-between" onclick="closeUserMenuOutside(event)">
 
-    <!-- ==================== หน้าสำหรับคนยังไม่ได้ LOGIN (สไตล์คลีนตามรูปเป๊ะๆ) ==================== -->
+    <!-- ==================== หน้าสำหรับคนยังไม่ได้ LOGIN (Landing Page) ==================== -->
     <div id="landing-page" class="hidden fixed inset-0 z-50 bg-[#121212] flex flex-col justify-between p-6 md:p-12 overflow-y-auto">
         <!-- Header -->
         <header class="flex justify-between items-center max-w-6xl w-full mx-auto pb-4 border-b border-[#282828]">
@@ -128,7 +128,7 @@
     </div>
 
 
-    <!-- ==================== หน้าสำหรับคน LOGIN แล้ว (ตารางบอสใช้งานจริง) ==================== -->
+    <!-- ==================== หน้าสำหรับคน LOGIN แล้ว ==================== -->
     
     <!-- ปุ่ม Hamburger 3 ขีด -->
     <div class="fixed top-4 right-4 z-40">
@@ -144,11 +144,16 @@
                 <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">ผู้ใช้งานปัจจุบัน</p>
                 <div class="flex items-center gap-2 mt-1">
                     <img id="user-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" class="w-6 h-6 rounded-full border border-slate-700" alt="Avatar">
-                    <span id="dropdown-username" class="text-sm font-bold font-gaming text-[#ff6b00] truncate">VALENTILE</span>
+                    <span id="dropdown-username" class="text-sm font-bold font-gaming text-[#ff6b00] truncate">Guest</span>
                 </div>
             </div>
 
             <div class="space-y-1 text-xs font-semibold">
+                <!-- เมนู Admin (แสดงเฉพาะ Admin เท่านั้น) -->
+                <a id="admin-panel-menu" href="/admin.html" class="hidden flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-[#ff6b00]/10 hover:bg-[#ff6b00] text-[#ff6b00] hover:text-black border border-[#ff6b00]/30 transition font-bold">
+                    <span>⚙️</span> ศูนย์จัดการ Admin
+                </a>
+
                 <a href="https://warzth.thehof.gg/news/boss-update-11-august-2026-th" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-[#222] text-slate-300 hover:text-white transition">
                     <span>🧟‍♂️</span> รายละเอียดบอส SUPER ZOMBIE
                 </a>
@@ -253,6 +258,9 @@
     </div>
 
     <script>
+        // รายชื่อ Admin ที่อนุญาตให้เห็นเมนู ศูนย์จัดการ Admin
+        const ADMIN_USERNAMES = ["hexeditorx10", "valentile"];
+
         // ดักจับ Query Params เมื่อ Login จาก Discord สำเร็จ
         const urlParams = new URLSearchParams(window.location.search);
         const discordId = urlParams.get('discord_id');
@@ -270,12 +278,17 @@
         let currentDiscordUser = localStorage.getItem('discord_username');
         let userAvatar = localStorage.getItem('discord_avatar');
 
-        // สลับหน้าระหว่าง Landing Page (ยังไม่ล็อกอิน) กับ หน้าแอพจริง
+        // สลับหน้าระหว่าง Landing Page กับ หน้าแอพจริง
         if (currentDiscordUser) {
             document.getElementById('landing-page').classList.add('hidden');
             document.getElementById('dropdown-username').innerText = currentDiscordUser;
             if (userAvatar && myUserId) {
                 document.getElementById('user-avatar').src = `https://cdn.discordapp.com/avatars/${myUserId}/${userAvatar}.png`;
+            }
+
+            // ตรวจสอบว่าเป็น Admin หรือไม่ เพื่อเปิดเมนูแอดมิน
+            if (ADMIN_USERNAMES.includes(currentDiscordUser.toLowerCase())) {
+                document.getElementById('admin-panel-menu').classList.remove('hidden');
             }
         } else {
             document.getElementById('landing-page').classList.remove('hidden');

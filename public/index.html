@@ -19,11 +19,45 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             transition: all 0.3s ease;
         }
-        .card-in-use {
+
+        /* 1. สีกรอบสถานะ: เขียว (60 - 30 นาที) */
+        .card-green {
             background: rgba(6, 78, 59, 0.25) !important;
             border: 1px solid #10b981 !important;
             box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
         }
+
+        /* 2. สีกรอบสถานะ: เหลือง (30 - 10 นาที) */
+        .card-yellow {
+            background: rgba(120, 53, 15, 0.25) !important;
+            border: 1px solid #f59e0b !important;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+        }
+
+        /* 3. สีกรอบสถานะ: แดง (ต่ำกว่า 10 นาที) */
+        .card-red {
+            background: rgba(136, 19, 55, 0.25) !important;
+            border: 1px solid #f43f5e !important;
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.25);
+        }
+
+        /* 4. สีกรอบสถานะ: แดงกระพริบเตือน (10 วินาทีสุดท้าย) */
+        @keyframes flashRedBorder {
+            0%, 100% {
+                border-color: #f43f5e;
+                box-shadow: 0 0 20px rgba(244, 63, 94, 0.8);
+                background: rgba(225, 29, 72, 0.35);
+            }
+            50% {
+                border-color: rgba(255, 255, 255, 0.1);
+                box-shadow: none;
+                background: rgba(18, 24, 38, 0.85);
+            }
+        }
+        .card-flash-red {
+            animation: flashRedBorder 1s infinite;
+        }
+
         .active-tab-red {
             background: rgba(225, 29, 72, 0.15);
             border: 1px solid #e11d48 !important;
@@ -108,7 +142,6 @@
             localStorage.setItem('warz_user_id', myUserId);
         }
 
-        // ตัวแปรจำลองชื่อ Discord (เดี๋ยวตอนทำ Discord OAuth2 แค่เปลี่ยนค่าตรงนี้ให้รับจาก Discord)
         let currentDiscordUser = localStorage.getItem('discord_username') || "VALENTILE";
 
         let currentType = 'Premium';
@@ -206,6 +239,8 @@
                 let timerColor = "text-slate-600";
                 let inUse = false;
                 let canUndo = false;
+                let cardStyleClass = "glass-card";
+                let badgeClass = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
 
                 const now = Date.now() + serverTimeOffset;
 
@@ -223,10 +258,35 @@
                         const seconds = totalSeconds % 60;
 
                         timerDisplay = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-                        timerColor = "text-emerald-400 font-bold";
+
+                        // คำนวณเปลี่ยนสีตามช่วงเวลา
+                        if (totalSeconds > 1800) {
+                            // 1. เขียว (60 - 30 นาที)
+                            cardStyleClass = "glass-card card-green";
+                            timerColor = "text-emerald-400 font-bold";
+                            badgeClass = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+                        } else if (totalSeconds > 600) {
+                            // 2. เหลือง (30 - 10 นาที)
+                            cardStyleClass = "glass-card card-yellow";
+                            timerColor = "text-amber-400 font-bold";
+                            badgeClass = "bg-amber-500/20 text-amber-400 border-amber-500/30";
+                        } else if (totalSeconds > 10) {
+                            // 3. แดง (ต่ำกว่า 10 นาที)
+                            cardStyleClass = "glass-card card-red";
+                            timerColor = "text-rose-400 font-bold";
+                            badgeClass = "bg-rose-500/20 text-rose-400 border-rose-500/30";
+                        } else {
+                            // 4. กระพริบสีแดง (10 วินาทีสุดท้ายก่อนบอสเกิด)
+                            cardStyleClass = "glass-card card-flash-red";
+                            timerColor = "text-rose-400 font-bold animate-pulse";
+                            badgeClass = "bg-rose-500/40 text-rose-300 border-rose-400";
+                        }
+
                     } else {
+                        // บอสเกิดแล้ว (READY!) กลับสู่สถานะปกติ
                         timerDisplay = "READY!";
                         timerColor = "text-emerald-400 font-bold animate-pulse";
+                        cardStyleClass = "glass-card";
                     }
                 }
 
@@ -238,11 +298,7 @@
                     }
                 }
 
-                if (inUse) {
-                    card.className = "glass-card card-in-use rounded-lg p-4 flex flex-col justify-between text-center relative overflow-hidden";
-                } else {
-                    card.className = "glass-card rounded-lg p-4 flex flex-col justify-between text-center relative overflow-hidden";
-                }
+                card.className = `${cardStyleClass} rounded-lg p-4 flex flex-col justify-between text-center relative overflow-hidden`;
 
                 const spawnBtnAttr = inUse ? "disabled" : `onclick="spawnBoss(${boss.id})"`;
                 const spawnBtnClass = inUse 
@@ -259,9 +315,8 @@
                     ? "bg-rose-950/80 hover:bg-rose-600/30 text-rose-400 border border-rose-500/40 hover:border-rose-500 cursor-pointer" 
                     : "bg-slate-900 text-slate-700 border border-slate-800 cursor-not-allowed opacity-40";
 
-                // เปลี่ยนป้าย IN USE เป็นชื่อคนคีย์เวลา
                 const userBadge = inUse && boss.createdBy 
-                    ? `<span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-bold max-w-[110px] truncate">👤 ${boss.createdBy}</span>` 
+                    ? `<span class="text-[10px] border px-2 py-0.5 rounded font-bold max-w-[110px] truncate ${badgeClass}">👤 ${boss.createdBy}</span>` 
                     : '';
 
                 card.innerHTML = `

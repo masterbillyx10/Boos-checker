@@ -18,7 +18,6 @@ const LOCATIONS = [
 const RESPAWN_MINUTES = 60;
 let activeUsers = new Map();
 
-// เคลียร์คนออนไลน์ที่หายไปเกิน 10 วินาที
 setInterval(() => {
     const now = Date.now();
     for (const [id, user] of activeUsers.entries()) {
@@ -40,6 +39,8 @@ for (let i = 1; i <= 50; i++) {
             serverName: serverName,
             location: loc,
             isLocked: lockedStatus,
+            allowedUserIds: [], // รายชื่อ ID ที่ได้รับสิทธิ์ VIP รายบุคคล
+            allowedUsers: [],   // รายชื่อ Username ที่ได้รับสิทธิ์
             killedAt: null,
             nextSpawn: null,
             previousNextSpawn: null,
@@ -60,6 +61,8 @@ for (let i = 1; i <= 50; i++) {
             serverName: serverName,
             location: loc,
             isLocked: lockedStatus,
+            allowedUserIds: [],
+            allowedUsers: [],
             killedAt: null,
             nextSpawn: null,
             previousNextSpawn: null,
@@ -75,9 +78,7 @@ app.get('/api/bosses', (req, res) => {
     const { serverType, location, userId, username } = req.query;
 
     if (userId) {
-        // ดักจับชื่อให้แม่นยำขึ้น กันไม่ให้ขึ้น Guest หากส่งค่ามา
         const finalName = (username && username !== 'null' && username !== 'undefined' && username.trim() !== '') ? username : "VALENTILE";
-        
         activeUsers.set(userId, {
             id: userId,
             username: finalName,
@@ -85,24 +86,36 @@ app.get('/api/bosses', (req, res) => {
         });
     }
 
-    let result = bosses;
-    if (serverType) result = result.filter(b => b.serverType === serverType);
-    if (location) result = result.filter(b => b.location === location);
+    let filtered = bosses;
+    if (serverType) filtered = filtered.filter(b => b.serverType === serverType);
+    if (location) filtered = filtered.filter(b => b.location === location);
+
+    // คำนวณสิทธิ์ VIP เฉพาะบุคคล:
+    // ถ้าห้องล็อคแบบ Global แต่ userId ของคนดึงข้อมูลอยู่ใน allowedUserIds -> ให้ปลดล็อกเฉพาะคนนี้
+    const customizedBosses = filtered.map(b => {
+        const isUserAllowed = userId && b.allowedUserIds && b.allowedUserIds.includes(userId);
+        const isLockedForThisUser = b.isLocked && !isUserAllowed;
+        return {
+            ...b,
+            isLocked: isLockedForThisUser
+        };
+    });
 
     res.json({
         serverTime: Date.now(),
         onlineCount: activeUsers.size || 1,
-        bosses: result
+        bosses: customizedBosses
     });
 });
 
 app.post('/api/bosses/spawn', (req, res) => {
-    const { id, username } = req.body;
-    const boss = bosses.find(b => b.id === Number(id)); // แปลงเป็น Number กันพลาด
+    const { id, username, userId } = req.body;
+    const boss = bosses.find(b => b.id === Number(id));
     
     if (boss) {
-        if (boss.isLocked) {
-            return res.status(403).json({ success: false, message: "ห้องนี้ต้องได้รับการปลดล็อก VIP" });
+        const isUserAllowed = userId && boss.allowedUserIds && boss.allowedUserIds.includes(userId);
+        if (boss.isLocked && !isUserAllowed) {
+            return res.status(403).json({ success: false, message: "ห้องนี้ต้องได้รับการปลดล็อก VIP เฉพาะบุคคล" });
         }
         if (boss.nextSpawn && new Date(boss.nextSpawn) > new Date()) {
             return res.status(400).json({ success: false, message: "ช่องนี้กำลังใช้งานอยู่" });
@@ -170,26 +183,50 @@ app.post('/api/admin/data', (req, res) => {
     res.json({ success: true, onlineUsers: onlineList, bosses: bosses });
 });
 
-app.post('/api/admin/toggle-lock', (req, res) => {
-    const { adminKey, bossId, isLocked } = req.body;
+// ปลดล็อกห้องให้ผู้ใช้เฉพาะบุคคล
+app.post('/api/admin/grant-user-room', (req, res) => {
+    const { adminKey, bossId, targetUserId, targetUsername } = req.body;
     if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
 
-    // แก้บั๊ก: บังคับแปลง bossId เป็น Number
     const boss = bosses.find(b => b.id === Number(bossId));
     if (boss) {
-        boss.isLocked = isLocked;
-        return res.json({ success: true, message: `อัปเดตสถานะห้องเรียบร้อย`, boss });
+        if (!boss.allowedUserIds.includes(targetUserId)) {
+            boss.allowedUserIds.push(targetUserId);
+            boss.allowedUsers.push(targetUsername || "VALENTILE");
+        }
+        return res.json({ success: true, message: `ปลดล็อกห้อง ${boss.serverName} ให้คุณ ${targetUsername} เรียบร้อยแล้ว!`, boss });
     }
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
 });
 
-// ฟังก์ชันใหม่: ปลดล็อคห้องทั้งหมดรวดเดียว
+// ยกเลิกสิทธิ์ห้องของผู้ใช้รายบุคคล
+app.post('/api/admin/revoke-user-room', (req, res) => {
+    const { adminKey, bossId, targetUserId } = req.body;
+    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+
+    const boss = bosses.find(b => b.id === Number(bossId));
+    if (boss) {
+        const idx = boss.allowedUserIds.indexOf(targetUserId);
+        if (idx !== -1) {
+            boss.allowedUserIds.splice(idx, 1);
+            boss.allowedUsers.splice(idx, 1);
+        }
+        return res.json({ success: true, message: `ยกเลิกสิทธิ์ใช้งานห้อง ${boss.serverName} เรียบร้อย`, boss });
+    }
+    res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
+});
+
+// ปลดล็อกห้องทั้งหมดแบบสาธารณะ
 app.post('/api/admin/unlock-all', (req, res) => {
     const { adminKey } = req.body;
     if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
 
-    bosses.forEach(b => b.isLocked = false);
-    res.json({ success: true, message: "ปลดล็อคห้องทั้งหมดเรียบร้อยแล้ว!" });
+    bosses.forEach(b => {
+        b.isLocked = false;
+        b.allowedUserIds = [];
+        b.allowedUsers = [];
+    });
+    res.json({ success: true, message: "ปลดล็อคห้องทั้งหมดแบบสาธารณะเรียบร้อยแล้ว!" });
 });
 
 app.post('/api/admin/kick-user', (req, res) => {

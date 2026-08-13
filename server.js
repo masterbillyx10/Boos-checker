@@ -39,8 +39,8 @@ for (let i = 1; i <= 50; i++) {
             serverName: serverName,
             location: loc,
             isLocked: lockedStatus,
-            allowedUserIds: [], // รายชื่อ ID ที่ได้รับสิทธิ์ VIP รายบุคคล
-            allowedUsers: [],   // รายชื่อ Username ที่ได้รับสิทธิ์
+            allowedUserIds: [],
+            allowedUsers: [],
             killedAt: null,
             nextSpawn: null,
             previousNextSpawn: null,
@@ -90,8 +90,6 @@ app.get('/api/bosses', (req, res) => {
     if (serverType) filtered = filtered.filter(b => b.serverType === serverType);
     if (location) filtered = filtered.filter(b => b.location === location);
 
-    // คำนวณสิทธิ์ VIP เฉพาะบุคคล:
-    // ถ้าห้องล็อคแบบ Global แต่ userId ของคนดึงข้อมูลอยู่ใน allowedUserIds -> ให้ปลดล็อกเฉพาะคนนี้
     const customizedBosses = filtered.map(b => {
         const isUserAllowed = userId && b.allowedUserIds && b.allowedUserIds.includes(userId);
         const isLockedForThisUser = b.isLocked && !isUserAllowed;
@@ -216,6 +214,23 @@ app.post('/api/admin/revoke-user-room', (req, res) => {
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
 });
 
+// สลับสถานะการล็อคแบบ Global (สั่งล็อคหรือปลดล็อคเดี่ยว)
+app.post('/api/admin/toggle-global-lock', (req, res) => {
+    const { adminKey, bossId, isLocked } = req.body;
+    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+
+    const boss = bosses.find(b => b.id === Number(bossId));
+    if (boss) {
+        boss.isLocked = isLocked;
+        if (isLocked) {
+            boss.allowedUserIds = [];
+            boss.allowedUsers = [];
+        }
+        return res.json({ success: true, message: `อัปเดตสถานะห้อง ${boss.serverName} เรียบร้อย` });
+    }
+    res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
+});
+
 // ปลดล็อกห้องทั้งหมดแบบสาธารณะ
 app.post('/api/admin/unlock-all', (req, res) => {
     const { adminKey } = req.body;
@@ -227,6 +242,21 @@ app.post('/api/admin/unlock-all', (req, res) => {
         b.allowedUsers = [];
     });
     res.json({ success: true, message: "ปลดล็อคห้องทั้งหมดแบบสาธารณะเรียบร้อยแล้ว!" });
+});
+
+// ล็อคห้องทั้งหมดแบบสาธารณะ (ย้อนกลับสู่ค่าเริ่มต้น 11-50 ล็อค)
+app.post('/api/admin/lock-all', (req, res) => {
+    const { adminKey } = req.body;
+    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+
+    bosses.forEach(b => {
+        // ดึงเลขห้องออกจากชื่อ serverName
+        const roomNum = parseInt(b.serverName.split(' ')[1]);
+        b.isLocked = roomNum > 10; // ห้อง 011 ขึ้นไปให้ล็อคทั้งหมด
+        b.allowedUserIds = [];
+        b.allowedUsers = [];
+    });
+    res.json({ success: true, message: "สั่งล็อคห้องมาตรฐาน (011-050) ทั้งหมดเรียบร้อยแล้ว!" });
 });
 
 app.post('/api/admin/kick-user', (req, res) => {

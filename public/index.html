@@ -20,7 +20,6 @@
             transition: all 0.3s ease;
         }
 
-        /* การ์ดสถานะล็อค (VIP Locked) */
         .card-locked {
             background: rgba(15, 20, 30, 0.6) !important;
             border: 1px solid rgba(245, 158, 11, 0.2) !important;
@@ -152,15 +151,15 @@
             </p>
             <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-left mb-6 font-mono text-xs text-slate-400 space-y-1">
                 <p>💬 Discord: <span class="text-amber-400 font-bold">VALENTILE</span></p>
-                <p>⚡ สถานะ: เปิดรับปลดล็อกรายห้อง / รายเดือน</p>
+                <p>⚡ สถานะ: เปิดรับปลดล็อกรายห้อง / ถาวร</p>
             </div>
             <div class="flex gap-2">
                 <button onclick="closeVipModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-xl text-sm transition">
                     ปิดหน้าต่าง
                 </button>
-                <button onclick="alert('คัดลอกชื่อ Discord เรียบร้อย!'); closeVipModal();" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold font-gaming py-2 rounded-xl text-sm transition">
+                <a href="https://discord.gg/XgwRMhg7hB" target="_blank" onclick="closeVipModal()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold font-gaming py-2 rounded-xl text-sm transition text-center flex items-center justify-center">
                     ติดต่อแอดมิน
-                </button>
+                </a>
             </div>
         </div>
     </div>
@@ -306,7 +305,6 @@
             bossesData.forEach(boss => {
                 const card = document.createElement('div');
                 
-                // กรณีเป็นห้องล็อค VIP (011 - 050)
                 if (boss.isLocked) {
                     card.className = "glass-card card-locked rounded-lg p-4 flex flex-col justify-between text-center relative overflow-hidden";
                     card.innerHTML = `
@@ -333,7 +331,6 @@
                     return;
                 }
 
-                // กรณีเป็นห้องฟรี (001 - 010)
                 let timerDisplay = "00:00:00";
                 let timerColor = "text-slate-600";
                 let inUse = false;

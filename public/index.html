@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
@@ -266,7 +266,7 @@
             await fetch('/api/bosses/spawn', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, username: currentDiscordUser })
+                body: JSON.stringify({ id, username: currentDiscordUser, userId: myUserId })
             });
             fetchBosses();
         }
@@ -305,7 +305,6 @@
             bossesData.forEach(boss => {
                 const card = document.createElement('div');
                 
-                // ตรวจสอบสถานะการล็อค VIP
                 if (boss.isLocked) {
                     card.className = "glass-card card-locked rounded-lg p-4 flex flex-col justify-between text-center relative overflow-hidden";
                     card.innerHTML = `
@@ -332,7 +331,6 @@
                     return;
                 }
 
-                // กรณีเป็นห้องที่เปิดใช้งานฟรี (Unlocked)
                 let timerDisplay = "00:00:00";
                 let timerColor = "text-slate-600";
                 let inUse = false;

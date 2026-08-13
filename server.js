@@ -13,13 +13,19 @@ const LOCATIONS = [
     "Campos City"
 ];
 
-// ตั้งเวลาบอสเกิดเป็น 1 ชั่วโมง (60 นาที)
-const RESPAWN_MINUTES = 60; 
+const RESPAWN_MINUTES = 60;
+let activeUsers = new Map();
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [id, lastSeen] of activeUsers.entries()) {
+        if (now - lastSeen > 10000) activeUsers.delete(id);
+    }
+}, 3000);
 
 let bosses = [];
 let idCounter = 1;
 
-// สร้างข้อมูล Official 50 และ Premium 50
 for (let i = 1; i <= 50; i++) {
     const serverName = `Official ${String(i).padStart(3, '0')}`;
     LOCATIONS.forEach(loc => {
@@ -30,8 +36,9 @@ for (let i = 1; i <= 50; i++) {
             location: loc,
             killedAt: null,
             nextSpawn: null,
-            previousNextSpawn: null, // สำหรับทำ Undo
-            resetAt: null            // เวลาที่กด Reset
+            previousNextSpawn: null,
+            resetAt: null,
+            createdBy: null // เพิ่มช่องเก็บชื่อ Discord
         });
     });
 }
@@ -47,29 +54,31 @@ for (let i = 1; i <= 50; i++) {
             killedAt: null,
             nextSpawn: null,
             previousNextSpawn: null,
-            resetAt: null
+            resetAt: null,
+            createdBy: null
         });
     });
 }
 
-// API ดึงข้อมูล
 app.get('/api/bosses', (req, res) => {
-    let result = bosses;
-    const { serverType, location } = req.query;
+    const { serverType, location, userId } = req.query;
 
+    if (userId) activeUsers.set(userId, Date.now());
+
+    let result = bosses;
     if (serverType) result = result.filter(b => b.serverType === serverType);
     if (location) result = result.filter(b => b.location === location);
 
-    // ส่งเวลาปัจจุบันของเซิร์ฟเวอร์ (serverTime) แนบไปให้หน้าเว็บด้วย
     res.json({
-        serverTime: new Date().getTime(),
+        serverTime: Date.now(),
+        onlineCount: activeUsers.size || 1,
         bosses: result
     });
 });
 
-// 1. API SPAWN (คีย์เวลาบอส)
+// รับ username เพิ่มเวลาคีย์ SPAWN
 app.post('/api/bosses/spawn', (req, res) => {
-    const { id } = req.body;
+    const { id, username } = req.body;
     const boss = bosses.find(b => b.id === id);
     
     if (boss) {
@@ -78,38 +87,34 @@ app.post('/api/bosses/spawn', (req, res) => {
         }
 
         const now = new Date();
-        // คำนวณเวลาเกิดถัดไป ให้ลงล็อค 60 นาทีพอดี (60 * 60 * 1000 มิลลิวินาที)
-        const nextSpawnTime = new Date(now.getTime() + (60 * 60 * 1000));
-        
         boss.killedAt = now.toISOString();
-        boss.nextSpawn = nextSpawnTime.toISOString();
+        boss.nextSpawn = new Date(now.getTime() + RESPAWN_MINUTES * 60000).toISOString();
+        boss.createdBy = username || "Guest"; // บันทึกชื่อผู้กด
         boss.previousNextSpawn = null;
         boss.resetAt = null;
         return res.json({ success: true, boss });
     }
-    
     res.status(404).json({ success: false, message: "Boss not found" });
 });
 
-// 2. API RESET (รีเซ็ตช่อง)
 app.post('/api/bosses/reset', (req, res) => {
     const { id } = req.body;
     const boss = bosses.find(b => b.id === id);
     if (boss) {
         if (boss.nextSpawn) {
-            boss.previousNextSpawn = boss.nextSpawn; // เก็บเวลาเดิมไว้ทำ Undo
-            boss.resetAt = new Date().toISOString();  // บันทึกเวลาที่กด Reset
+            boss.previousNextSpawn = boss.nextSpawn;
+            boss.resetAt = new Date().toISOString();
         }
         boss.killedAt = null;
         boss.nextSpawn = null;
+        boss.createdBy = null; // เคลียร์ชื่อคนคีย์
         return res.json({ success: true, boss });
     }
     res.status(404).json({ success: false, message: "Boss not found" });
 });
 
-// 3. API UNDO (เลิกการรีเซ็ต - เงื่อนไขภายใน 3 นาที)
 app.post('/api/bosses/undo', (req, res) => {
-    const { id } = req.body;
+    const { id, username } = req.body;
     const boss = bosses.find(b => b.id === id);
     if (boss) {
         if (!boss.previousNextSpawn || !boss.resetAt) {
@@ -120,13 +125,12 @@ app.post('/api/bosses/undo', (req, res) => {
         const resetTime = new Date(boss.resetAt);
         const diffMinutes = (now - resetTime) / (1000 * 60);
 
-        // เช็คว่าเกิน 3 นาทีหรือยัง
         if (diffMinutes > 3) {
             return res.status(400).json({ success: false, message: "เกินระยะเวลา 3 นาที ไม่สามารถ Undo ได้" });
         }
 
-        // คืนค่าเวลาเดิม
         boss.nextSpawn = boss.previousNextSpawn;
+        boss.createdBy = username || "Guest";
         boss.previousNextSpawn = null;
         boss.resetAt = null;
         return res.json({ success: true, boss });

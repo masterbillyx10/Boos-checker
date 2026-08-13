@@ -5,196 +5,247 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WARZ BOSS TIMER</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Rajdhani', sans-serif;
-            background-color: #0b0e14;
+            font-family: 'Prompt', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
         }
         .font-gaming {
             font-family: 'Orbitron', sans-serif;
         }
-        .glass-card {
-            background: rgba(18, 24, 38, 0.85);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.3s ease;
+
+        /* กล่องการ์ดแนว Clean Dark */
+        .clean-card {
+            background: #181818;
+            border: 1px solid #282828;
+            transition: all 0.25s ease;
+        }
+        .clean-card:hover {
+            border-color: #ff6b00;
         }
 
-        .card-locked {
-            background: rgba(15, 20, 30, 0.6) !important;
-            border: 1px solid rgba(245, 158, 11, 0.2) !important;
-            opacity: 0.75;
-        }
-        .card-locked:hover {
-            opacity: 1;
-            border-color: rgba(245, 158, 11, 0.5) !important;
+        /* กรอบสีส้มตามภาพตัวอย่าง */
+        .orange-bracket {
+            position: relative;
+            border-left: 2px solid #ff6b00;
+            border-right: 2px solid #ff6b00;
+            border-radius: 8px;
         }
 
+        /* สถานะการ์ดบอส */
+        .card-in-use {
+            background: #1e1e1e !important;
+            border: 1px solid #ff6b00 !important;
+            box-shadow: 0 0 15px rgba(255, 107, 0, 0.15);
+        }
         .card-green {
-            background: rgba(6, 78, 59, 0.25) !important;
-            border: 1px solid #10b981 !important;
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
+            border-color: #10b981 !important;
         }
         .card-yellow {
-            background: rgba(120, 53, 15, 0.25) !important;
-            border: 1px solid #f59e0b !important;
-            box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+            border-color: #f59e0b !important;
         }
         .card-red {
-            background: rgba(136, 19, 55, 0.25) !important;
-            border: 1px solid #f43f5e !important;
-            box-shadow: 0 0 15px rgba(244, 63, 94, 0.25);
+            border-color: #ef4444 !important;
         }
 
         @keyframes flashRedBorder {
-            0%, 100% {
-                border-color: #f43f5e;
-                box-shadow: 0 0 20px rgba(244, 63, 94, 0.8);
-                background: rgba(225, 29, 72, 0.35);
-            }
-            50% {
-                border-color: rgba(255, 255, 255, 0.1);
-                box-shadow: none;
-                background: rgba(18, 24, 38, 0.85);
-            }
+            0%, 100% { border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
+            50% { border-color: #282828; box-shadow: none; }
         }
         .card-flash-red {
             animation: flashRedBorder 1s infinite;
         }
 
-        .active-tab-red {
-            background: rgba(225, 29, 72, 0.15);
-            border: 1px solid #e11d48 !important;
-            color: #f43f5e !important;
-            box-shadow: 0 0 15px rgba(225, 29, 72, 0.3);
-        }
-        .active-tab-blue {
-            background: rgba(14, 165, 233, 0.15);
-            border: 1px solid #0ea5e9 !important;
-            color: #38bdf8 !important;
-            box-shadow: 0 0 15px rgba(14, 165, 233, 0.3);
+        .active-tab-orange {
+            background: #ff6b00 !important;
+            color: #000000 !important;
+            font-weight: 700;
         }
         .active-city {
-            border: 1px solid #38bdf8 !important;
-            background: rgba(15, 23, 42, 0.9);
-            box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+            border-color: #ff6b00 !important;
+            color: #ff6b00 !important;
+            background: #1e1e1e;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #121212;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #282828;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ff6b00;
         }
     </style>
 </head>
-<body class="text-slate-200 min-h-screen pb-12 relative" onclick="closeUserMenuOutside(event)">
+<body class="min-h-screen relative flex flex-col justify-between" onclick="closeUserMenuOutside(event)">
 
-    <!-- ปุ่ม Hamburger 3 ขีด ที่มุมบนขวามือ -->
+    <!-- ==================== หน้าสำหรับคนยังไม่ได้ LOGIN (สไตล์คลีนตามรูปเป๊ะๆ) ==================== -->
+    <div id="landing-page" class="hidden fixed inset-0 z-50 bg-[#121212] flex flex-col justify-between p-6 md:p-12 overflow-y-auto">
+        <!-- Header -->
+        <header class="flex justify-between items-center max-w-6xl w-full mx-auto pb-4 border-b border-[#282828]">
+            <div class="flex items-center gap-2">
+                <span class="text-xl font-black font-gaming text-white tracking-widest">WARZ <span class="text-[#ff6b00]">TIMER</span></span>
+            </div>
+            <a href="/api/auth/discord/login" class="text-xs font-bold text-slate-300 hover:text-[#ff6b00] transition">
+                เข้าสู่ระบบ
+            </a>
+        </header>
+
+        <!-- Main Content Center -->
+        <main class="text-center my-auto py-12">
+            <h2 id="landing-online-count" class="text-3xl md:text-5xl font-black font-gaming text-[#ff6b00] mb-2 tracking-wider">
+                USER ONLINE ???
+            </h2>
+            <h1 class="text-3xl md:text-5xl font-black font-gaming text-white tracking-widest mb-8">
+                WARZ BOSS TIMER
+            </h1>
+
+            <div class="inline-block px-8 py-3 orange-bracket bg-[#181818]/60 mb-8">
+                <p class="text-xs md:text-sm font-bold font-gaming tracking-widest text-slate-300">
+                    DISCORD COMMUNITY SYSTEM
+                </p>
+            </div>
+
+            <div class="max-w-md mx-auto">
+                <a href="/api/auth/discord/login" class="flex items-center justify-center gap-3 w-full bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold font-gaming py-3.5 px-6 rounded-xl text-sm transition shadow-lg">
+                    <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.074 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.78 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+                    <span>เข้าสู่ระบบด้วย Discord</span>
+                </a>
+            </div>
+        </main>
+
+        <footer class="text-center text-xs text-slate-600">
+            © WARZ BOSS TIMER - ALL RIGHTS RESERVED
+        </footer>
+    </div>
+
+
+    <!-- ==================== หน้าสำหรับคน LOGIN แล้ว (ตารางบอสใช้งานจริง) ==================== -->
+    
+    <!-- ปุ่ม Hamburger 3 ขีด -->
     <div class="fixed top-4 right-4 z-40">
-        <button onclick="toggleUserMenu(event)" class="bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 p-2.5 rounded-xl shadow-lg transition flex items-center justify-center">
+        <button onclick="toggleUserMenu(event)" class="bg-[#181818] hover:bg-[#222] text-slate-200 border border-[#282828] p-2.5 rounded-xl shadow-xl transition flex items-center justify-center">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
             </svg>
         </button>
 
         <!-- Dropdown Menu -->
-        <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl p-2 z-50 backdrop-blur-md">
-            <!-- แสดงชื่อผู้ใช้ตัวเอง -->
-            <div class="p-3 border-b border-slate-800 bg-slate-950/60 rounded-xl mb-1">
+        <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-64 bg-[#181818] border border-[#282828] rounded-2xl shadow-2xl p-2 z-50 backdrop-blur-md">
+            <div class="p-3 border-b border-[#282828] bg-[#121212] rounded-xl mb-1">
                 <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">ผู้ใช้งานปัจจุบัน</p>
                 <div class="flex items-center gap-2 mt-1">
-                    <span class="text-base">👤</span>
-                    <span id="dropdown-username" class="text-sm font-bold font-gaming text-emerald-400 truncate">VALENTILE</span>
+                    <img id="user-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" class="w-6 h-6 rounded-full border border-slate-700" alt="Avatar">
+                    <span id="dropdown-username" class="text-sm font-bold font-gaming text-[#ff6b00] truncate">VALENTILE</span>
                 </div>
             </div>
 
-            <!-- รายการเมนูและลิงก์ -->
             <div class="space-y-1 text-xs font-semibold">
-                <a href="https://warzth.thehof.gg/news/boss-update-11-august-2026-th" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition">
+                <a href="https://warzth.thehof.gg/news/boss-update-11-august-2026-th" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-[#222] text-slate-300 hover:text-white transition">
                     <span>🧟‍♂️</span> รายละเอียดบอส SUPER ZOMBIE
                 </a>
-                <a href="https://warzth.thehof.gg/news/Boss-Zombie-System-th" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition">
+                <a href="https://warzth.thehof.gg/news/Boss-Zombie-System-th" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-[#222] text-slate-300 hover:text-white transition">
                     <span>📍</span> จุดเกิดบอส
                 </a>
-                <a href="https://discord.gg/XgwRMhg7hB" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-800 text-amber-400 hover:text-amber-300 transition">
+                <a href="https://discord.gg/XgwRMhg7hB" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-[#222] text-[#ff6b00] transition">
                     <span>💬</span> ติดต่อแอดมิน (Discord)
                 </a>
-                <button onclick="logoutUser()" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-rose-950/40 text-rose-400 hover:text-rose-300 transition text-left mt-1 border-t border-slate-800/80 pt-2">
+                <button onclick="logoutUser()" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-rose-950/30 text-rose-400 hover:text-rose-300 transition text-left mt-1 border-t border-[#282828] pt-2">
                     <span>🚪</span> ออกจากระบบ
                 </button>
             </div>
         </div>
     </div>
 
-    <header class="text-center pt-8 pb-4">
-        <h1 class="text-3xl md:text-4xl font-black font-gaming tracking-wider text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.4)]">
-            WARZ BOSS TIMER
-        </h1>
-        
-        <div class="inline-flex items-center gap-2 mt-2 px-3 py-1 bg-slate-900 border border-slate-800 rounded-md text-xs font-gaming">
-            <span class="relative flex h-2.5 w-2.5">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
-            <span class="text-slate-300">ONLINE: <span id="online-count" class="text-emerald-400 font-bold">1</span> USER(S)</span>
-        </div>
-    </header>
+    <!-- Main App Content -->
+    <div>
+        <header class="text-center pt-8 pb-4">
+            <h1 class="text-3xl md:text-4xl font-black font-gaming tracking-wider text-white">
+                WARZ <span class="text-[#ff6b00]">BOSS TIMER</span>
+            </h1>
+            
+            <div class="inline-flex items-center gap-2 mt-2 px-3 py-1 bg-[#181818] border border-[#282828] rounded-md text-xs font-gaming">
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff6b00] opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-[#ff6b00]"></span>
+                </span>
+                <span class="text-slate-400">ONLINE: <span id="online-count" class="text-[#ff6b00] font-bold">1</span> USER(S)</span>
+            </div>
+        </header>
 
-    <main class="max-w-6xl mx-auto px-4">
-        
-        <div class="flex justify-center gap-3 mb-6">
-            <button id="tab-premium" onclick="selectServerType('Premium')" 
-                class="active-tab-red px-6 py-2.5 rounded-lg text-sm font-bold font-gaming transition-all duration-200">
-                PREMIUM SERVER (50ห้อง)
-            </button>
-            <button id="tab-official" onclick="selectServerType('Official')" 
-                class="px-6 py-2.5 rounded-lg text-sm font-bold font-gaming transition-all duration-200 border border-slate-800 text-slate-400 bg-slate-900/50">
-                OFFICIAL SERVER (50ห้อง)
-            </button>
-        </div>
+        <main class="max-w-6xl mx-auto px-4">
+            
+            <!-- Server Type Tab -->
+            <div class="flex justify-center gap-3 mb-6">
+                <button id="tab-premium" onclick="selectServerType('Premium')" 
+                    class="active-tab-orange px-6 py-2 rounded-xl text-xs font-bold font-gaming transition-all duration-200 border border-[#282828]">
+                    PREMIUM SERVER (50ห้อง)
+                </button>
+                <button id="tab-official" onclick="selectServerType('Official')" 
+                    class="px-6 py-2 rounded-xl text-xs font-bold font-gaming transition-all duration-200 border border-[#282828] text-slate-400 bg-[#181818]">
+                    OFFICIAL SERVER (50ห้อง)
+                </button>
+            </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-            <button onclick="selectCity('Norad Military Base')" id="city-Norad Military Base" class="active-city glass-card p-3 rounded-lg text-center transition hover:bg-slate-800/80">
-                <div class="text-lg">🏢</div>
-                <div class="text-xs font-bold font-gaming mt-1">Norad Military Base</div>
-            </button>
-            <button onclick="selectCity('Ridgeway Airport')" id="city-Ridgeway Airport" class="glass-card p-3 rounded-lg text-center transition hover:bg-slate-800/80">
-                <div class="text-lg">✈️</div>
-                <div class="text-xs font-bold font-gaming mt-1">Ridgeway Airport</div>
-            </button>
-            <button onclick="selectCity('Crystal Lake Resort')" id="city-Crystal Lake Resort" class="glass-card p-3 rounded-lg text-center transition hover:bg-slate-800/80">
-                <div class="text-lg">🏠</div>
-                <div class="text-xs font-bold font-gaming mt-1">Crystal Lake Resort</div>
-            </button>
-            <button onclick="selectCity('Campos City')" id="city-Campos City" class="glass-card p-3 rounded-lg text-center transition hover:bg-slate-800/80">
-                <div class="text-lg">🏙️</div>
-                <div class="text-xs font-bold font-gaming mt-1">Campos City</div>
-            </button>
-        </div>
+            <!-- City Select -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                <button onclick="selectCity('Norad Military Base')" id="city-Norad Military Base" class="active-city clean-card p-3 rounded-xl text-center transition">
+                    <div class="text-lg">🏢</div>
+                    <div class="text-xs font-bold font-gaming mt-1">Norad Military Base</div>
+                </button>
+                <button onclick="selectCity('Ridgeway Airport')" id="city-Ridgeway Airport" class="clean-card p-3 rounded-xl text-center transition">
+                    <div class="text-lg">✈️</div>
+                    <div class="text-xs font-bold font-gaming mt-1">Ridgeway Airport</div>
+                </button>
+                <button onclick="selectCity('Crystal Lake Resort')" id="city-Crystal Lake Resort" class="clean-card p-3 rounded-xl text-center transition">
+                    <div class="text-lg">🏠</div>
+                    <div class="text-xs font-bold font-gaming mt-1">Crystal Lake Resort</div>
+                </button>
+                <button onclick="selectCity('Campos City')" id="city-Campos City" class="clean-card p-3 rounded-xl text-center transition">
+                    <div class="text-lg">🏙️</div>
+                    <div class="text-xs font-bold font-gaming mt-1">Campos City</div>
+                </button>
+            </div>
 
-        <div class="text-center mb-6">
-            <span class="text-rose-500 text-sm font-bold tracking-wide font-gaming inline-flex items-center gap-1.5">
-                📍 <span id="current-location-text">Norad Military Base</span>
-            </span>
-        </div>
+            <div class="text-center mb-6">
+                <span class="text-[#ff6b00] text-xs font-bold tracking-wider font-gaming inline-flex items-center gap-1.5">
+                    📍 <span id="current-location-text">Norad Military Base</span>
+                </span>
+            </div>
 
-        <div id="boss-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+            <!-- Boss Cards Grid -->
+            <div id="boss-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
 
-    </main>
+        </main>
+    </div>
 
     <!-- Modal แจ้งเตือนปลดล็อก VIP -->
-    <div id="vip-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-amber-500/40 rounded-2xl max-w-md w-full p-6 text-center shadow-[0_0_30px_rgba(245,158,11,0.2)]">
+    <div id="vip-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-[#181818] border border-[#ff6b00]/40 rounded-2xl max-w-md w-full p-6 text-center shadow-[0_0_30px_rgba(255,107,0,0.15)]">
             <div class="text-4xl mb-3">🔒</div>
-            <h3 class="text-xl font-bold font-gaming text-amber-400 mb-2">ปลดล็อกห้อง VIP</h3>
-            <p class="text-sm text-slate-300 mb-4">
+            <h3 class="text-xl font-bold font-gaming text-[#ff6b00] mb-2">ปลดล็อกห้อง VIP</h3>
+            <p class="text-xs text-slate-300 mb-4 leading-relaxed">
                 ห้องนี้ถูกล็อคไว้เฉพาะสมาชิก VIP<br>
                 หากต้องการปลดล็อกใช้งานห้องนี้ หรือเช่าห้องแบบส่วนตัว<br>
                 สามารถติดต่อแอดมินเพื่อชำระเงินได้ทันที!
             </p>
-            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-left mb-6 font-mono text-xs text-slate-400 space-y-1">
-                <p>💬 Discord: <span class="text-amber-400 font-bold">VALENTILE</span></p>
+            <div class="bg-[#121212] p-3 rounded-xl border border-[#282828] text-left mb-6 font-mono text-xs text-slate-400 space-y-1">
+                <p>💬 Discord: <span class="text-[#ff6b00] font-bold">VALENTILE</span></p>
                 <p>⚡ สถานะ: เปิดรับปลดล็อกรายห้อง / ถาวร</p>
             </div>
             <div class="flex gap-2">
-                <button onclick="closeVipModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-xl text-sm transition">
+                <button onclick="closeVipModal()" class="flex-1 bg-[#222] hover:bg-[#333] text-slate-300 font-bold py-2 rounded-xl text-xs transition">
                     ปิดหน้าต่าง
                 </button>
-                <a href="https://discord.gg/XgwRMhg7hB" target="_blank" onclick="closeVipModal()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold font-gaming py-2 rounded-xl text-sm transition text-center flex items-center justify-center">
+                <a href="https://discord.gg/XgwRMhg7hB" target="_blank" onclick="closeVipModal()" class="flex-1 bg-[#ff6b00] hover:bg-[#e05d00] text-black font-bold font-gaming py-2 rounded-xl text-xs transition text-center flex items-center justify-center">
                     ติดต่อแอดมิน
                 </a>
             </div>
@@ -202,38 +253,55 @@
     </div>
 
     <script>
-        let myUserId = localStorage.getItem('warz_user_id');
-        if (!myUserId) {
-            myUserId = 'user_' + Math.random().toString(36).substring(2, 9);
-            localStorage.setItem('warz_user_id', myUserId);
+        // ดักจับ Query Params เมื่อ Login จาก Discord สำเร็จ
+        const urlParams = new URLSearchParams(window.location.search);
+        const discordId = urlParams.get('discord_id');
+        const username = urlParams.get('username');
+        const avatar = urlParams.get('avatar');
+
+        if (discordId && username) {
+            localStorage.setItem('warz_user_id', discordId);
+            localStorage.setItem('discord_username', username);
+            if (avatar) localStorage.setItem('discord_avatar', avatar);
+            window.history.replaceState({}, document.title, "/");
         }
 
-        let currentDiscordUser = localStorage.getItem('discord_username') || "VALENTILE";
-        document.getElementById('dropdown-username').innerText = currentDiscordUser;
+        let myUserId = localStorage.getItem('warz_user_id');
+        let currentDiscordUser = localStorage.getItem('discord_username');
+        let userAvatar = localStorage.getItem('discord_avatar');
+
+        // สลับหน้าระหว่าง Landing Page (ยังไม่ล็อกอิน) กับ หน้าแอพจริง
+        if (currentDiscordUser) {
+            document.getElementById('landing-page').classList.add('hidden');
+            document.getElementById('dropdown-username').innerText = currentDiscordUser;
+            if (userAvatar && myUserId) {
+                document.getElementById('user-avatar').src = `https://cdn.discordapp.com/avatars/${myUserId}/${userAvatar}.png`;
+            }
+        } else {
+            document.getElementById('landing-page').classList.remove('hidden');
+        }
 
         function toggleUserMenu(e) {
             e.stopPropagation();
-            const menu = document.getElementById('user-dropdown-menu');
-            menu.classList.toggle('hidden');
+            document.getElementById('user-dropdown-menu').classList.toggle('hidden');
         }
 
         function closeUserMenuOutside(e) {
             const menu = document.getElementById('user-dropdown-menu');
-            if (!menu.classList.contains('hidden')) {
+            if (menu && !menu.classList.contains('hidden')) {
                 menu.classList.add('hidden');
             }
         }
 
         function logoutUser() {
             if (confirm('คุณต้องการออกจากระบบหรือไม่?')) {
-                localStorage.removeItem('discord_username');
+                localStorage.clear();
                 location.reload();
             }
         }
 
         let currentType = 'Premium';
         let currentCity = 'Norad Military Base';
-        
         let bossesData = [];
         let serverTimeOffset = 0;
         let playedAlerts = new Set();
@@ -277,11 +345,11 @@
             const btnOff = document.getElementById('tab-official');
 
             if (type === 'Premium') {
-                btnPrem.className = "active-tab-red px-6 py-2.5 rounded-lg text-sm font-bold font-gaming transition-all duration-200";
-                btnOff.className = "px-6 py-2.5 rounded-lg text-sm font-bold font-gaming transition-all duration-200 border border-slate-800 text-slate-400 bg-slate-900/50";
+                btnPrem.className = "active-tab-orange px-6 py-2 rounded-xl text-xs font-bold font-gaming transition-all duration-200 border border-[#282828]";
+                btnOff.className = "px-6 py-2 rounded-xl text-xs font-bold font-gaming transition-all duration-200 border border-[#282828] text-slate-400 bg-[#181818]";
             } else {
-                btnOff.className = "active-tab-blue px-6 py-2.5 rounded-lg text-sm font-bold font-gaming transition-all duration-200";
-                btnPrem.className = "px-6 py-2.5 rounded-lg text-sm font-bold font-gaming transition-all duration-200 border border-slate-800 text-slate-400 bg-slate-900/50";
+                btnOff.className = "active-tab-orange px-6 py-2 rounded-xl text-xs font-bold font-gaming transition-all duration-200 border border-[#282828]";
+                btnPrem.className = "px-6 py-2 rounded-xl text-xs font-bold font-gaming transition-all duration-200 border border-[#282828] text-slate-400 bg-[#181818]";
             }
             fetchBosses();
         }
@@ -300,7 +368,7 @@
         }
 
         async function fetchBosses() {
-            const url = `/api/bosses?serverType=${currentType}&location=${encodeURIComponent(currentCity)}&userId=${myUserId}&username=${encodeURIComponent(currentDiscordUser)}`;
+            const url = `/api/bosses?serverType=${currentType}&location=${encodeURIComponent(currentCity)}&userId=${myUserId || 'guest'}&username=${encodeURIComponent(currentDiscordUser || 'Guest')}`;
             try {
                 const res = await fetch(url);
                 const data = await res.json();
@@ -310,9 +378,11 @@
                 
                 if (data.onlineCount) {
                     document.getElementById('online-count').innerText = data.onlineCount;
+                    const landingCount = document.getElementById('landing-online-count');
+                    if (landingCount) landingCount.innerText = `USER ONLINE ${data.onlineCount}`;
                 }
                 
-                renderBossGrid();
+                if (currentDiscordUser) renderBossGrid();
             } catch(e) {
                 console.error("Error fetching bosses:", e);
             }
@@ -364,23 +434,23 @@
                 const card = document.createElement('div');
                 
                 if (boss.isLocked) {
-                    card.className = "glass-card card-locked rounded-lg p-4 flex flex-col justify-between text-center relative overflow-hidden";
+                    card.className = "clean-card card-locked rounded-xl p-4 flex flex-col justify-between text-center relative overflow-hidden";
                     card.innerHTML = `
                         <div>
                             <div class="flex justify-between items-center mb-1">
                                 <span class="text-xs font-bold font-gaming text-slate-400 tracking-wider">
                                     TH ${boss.serverName.toUpperCase()}
                                 </span>
-                                <span class="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold">🔒 VIP LOCKED</span>
+                                <span class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold">🔒 VIP LOCKED</span>
                             </div>
                             
-                            <div class="text-xl font-bold font-gaming text-amber-500/60 my-4 tracking-widest flex items-center justify-center gap-2">
+                            <div class="text-lg font-bold font-gaming text-amber-500/60 my-4 tracking-widest flex items-center justify-center gap-2">
                                 <span>🔒</span> <span>LOCKED</span>
                             </div>
                         </div>
 
-                        <div class="mt-2 border-t border-slate-800/80 pt-3">
-                            <button onclick="openVipModal()" class="w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded py-1.5 text-xs font-bold font-gaming transition">
+                        <div class="mt-2 border-t border-[#282828] pt-3">
+                            <button onclick="openVipModal()" class="w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg py-1.5 text-xs font-bold font-gaming transition">
                                 🔓 ติดต่อปลดล็อกห้อง
                             </button>
                         </div>
@@ -390,11 +460,11 @@
                 }
 
                 let timerDisplay = "00:00:00";
-                let timerColor = "text-slate-600";
+                let timerColor = "text-slate-500";
                 let inUse = false;
                 let canUndo = false;
-                let cardStyleClass = "glass-card";
-                let badgeClass = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+                let cardStyleClass = "clean-card";
+                let badgeClass = "bg-[#ff6b00]/10 text-[#ff6b00] border-[#ff6b00]/30";
 
                 const now = Date.now() + serverTimeOffset;
 
@@ -414,27 +484,27 @@
                         timerDisplay = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
                         if (totalSeconds > 1800) {
-                            cardStyleClass = "glass-card card-green";
+                            cardStyleClass = "clean-card card-in-use card-green";
                             timerColor = "text-emerald-400 font-bold";
-                            badgeClass = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+                            badgeClass = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
                         } else if (totalSeconds > 600) {
-                            cardStyleClass = "glass-card card-yellow";
+                            cardStyleClass = "clean-card card-in-use card-yellow";
                             timerColor = "text-amber-400 font-bold";
-                            badgeClass = "bg-amber-500/20 text-amber-400 border-amber-500/30";
+                            badgeClass = "bg-amber-500/10 text-amber-400 border-amber-500/30";
                         } else if (totalSeconds > 10) {
-                            cardStyleClass = "glass-card card-red";
+                            cardStyleClass = "clean-card card-in-use card-red";
                             timerColor = "text-rose-400 font-bold";
-                            badgeClass = "bg-rose-500/20 text-rose-400 border-rose-500/30";
+                            badgeClass = "bg-rose-500/10 text-rose-400 border-rose-500/30";
                         } else {
-                            cardStyleClass = "glass-card card-flash-red";
+                            cardStyleClass = "clean-card card-flash-red";
                             timerColor = "text-rose-400 font-bold animate-pulse";
-                            badgeClass = "bg-rose-500/40 text-rose-300 border-rose-400";
+                            badgeClass = "bg-rose-500/30 text-rose-300 border-rose-400";
                         }
 
                     } else {
                         timerDisplay = "READY!";
-                        timerColor = "text-emerald-400 font-bold animate-pulse";
-                        cardStyleClass = "glass-card";
+                        timerColor = "text-[#ff6b00] font-bold animate-pulse";
+                        cardStyleClass = "clean-card";
 
                         const isMySpawn = localStorage.getItem(`my_spawn_${boss.id}`) === 'true';
                         if (isMySpawn && !playedAlerts.has(boss.id)) {
@@ -455,22 +525,22 @@
                     }
                 }
 
-                card.className = `${cardStyleClass} rounded-lg p-4 flex flex-col justify-between text-center relative overflow-hidden`;
+                card.className = `${cardStyleClass} rounded-xl p-4 flex flex-col justify-between text-center relative overflow-hidden`;
 
                 const spawnBtnAttr = inUse ? "disabled" : `onclick="spawnBoss(${boss.id})"`;
                 const spawnBtnClass = inUse 
-                    ? "bg-slate-800 text-slate-600 border border-slate-700/50 cursor-not-allowed opacity-50" 
-                    : "bg-emerald-950/80 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 hover:border-emerald-500 cursor-pointer";
+                    ? "bg-[#121212] text-slate-600 border border-[#282828] cursor-not-allowed opacity-50" 
+                    : "bg-[#ff6b00]/10 hover:bg-[#ff6b00] text-[#ff6b00] hover:text-black border border-[#ff6b00]/40 cursor-pointer font-bold";
 
                 const undoBtnAttr = canUndo ? `onclick="undoBoss(${boss.id})"` : "disabled";
                 const undoBtnClass = canUndo 
-                    ? "bg-amber-950/80 hover:bg-amber-600/30 text-amber-400 border border-amber-500/40 hover:border-amber-500 cursor-pointer animate-pulse" 
-                    : "bg-slate-900 text-slate-700 border border-slate-800 cursor-not-allowed opacity-40";
+                    ? "bg-amber-950/40 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 cursor-pointer animate-pulse font-bold" 
+                    : "bg-[#121212] text-slate-700 border border-[#282828] cursor-not-allowed opacity-40";
 
                 const resetBtnAttr = inUse ? `onclick="resetBoss(${boss.id})"` : "disabled";
                 const resetBtnClass = inUse 
-                    ? "bg-rose-950/80 hover:bg-rose-600/30 text-rose-400 border border-rose-500/40 hover:border-rose-500 cursor-pointer" 
-                    : "bg-slate-900 text-slate-700 border border-slate-800 cursor-not-allowed opacity-40";
+                    ? "bg-rose-950/40 hover:bg-rose-600/30 text-rose-400 border border-rose-500/40 cursor-pointer font-bold" 
+                    : "bg-[#121212] text-slate-700 border border-[#282828] cursor-not-allowed opacity-40";
 
                 const userBadge = inUse && boss.createdBy 
                     ? `<span class="text-[10px] border px-2 py-0.5 rounded font-bold max-w-[110px] truncate ${badgeClass}">👤 ${boss.createdBy}</span>` 
@@ -485,19 +555,19 @@
                             ${userBadge}
                         </div>
                         
-                        <div class="text-2xl font-black font-gaming ${timerColor} my-3 tracking-widest drop-shadow-[0_0_8px_rgba(16,185,129,0.2)]">
+                        <div class="text-2xl font-black font-gaming ${timerColor} my-3 tracking-widest drop-shadow-[0_0_8px_rgba(255,107,0,0.15)]">
                             ${timerDisplay}
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-1.5 mt-2 border-t border-slate-800/80 pt-3">
-                        <button ${spawnBtnAttr} class="${spawnBtnClass} rounded py-1 text-[11px] font-bold font-gaming transition">
+                    <div class="grid grid-cols-3 gap-1.5 mt-2 border-t border-[#282828] pt-3">
+                        <button ${spawnBtnAttr} class="${spawnBtnClass} rounded-lg py-1 text-[11px] font-gaming transition">
                             SPAWN
                         </button>
-                        <button ${undoBtnAttr} class="${undoBtnClass} rounded py-1 text-[11px] font-bold font-gaming transition">
+                        <button ${undoBtnAttr} class="${undoBtnClass} rounded-lg py-1 text-[11px] font-gaming transition">
                             UNDO
                         </button>
-                        <button ${resetBtnAttr} class="${resetBtnClass} rounded py-1 text-[11px] font-bold font-gaming transition">
+                        <button ${resetBtnAttr} class="${resetBtnClass} rounded-lg py-1 text-[11px] font-gaming transition">
                             RESET
                         </button>
                     </div>

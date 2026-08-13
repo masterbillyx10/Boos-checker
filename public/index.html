@@ -19,49 +19,11 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             transition: all 0.3s ease;
         }
-
-        .card-locked {
-            background: rgba(15, 20, 30, 0.6) !important;
-            border: 1px solid rgba(245, 158, 11, 0.2) !important;
-            opacity: 0.75;
-        }
-        .card-locked:hover {
-            opacity: 1;
-            border-color: rgba(245, 158, 11, 0.5) !important;
-        }
-
-        .card-green {
+        .card-in-use {
             background: rgba(6, 78, 59, 0.25) !important;
             border: 1px solid #10b981 !important;
             box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
         }
-        .card-yellow {
-            background: rgba(120, 53, 15, 0.25) !important;
-            border: 1px solid #f59e0b !important;
-            box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
-        }
-        .card-red {
-            background: rgba(136, 19, 55, 0.25) !important;
-            border: 1px solid #f43f5e !important;
-            box-shadow: 0 0 15px rgba(244, 63, 94, 0.25);
-        }
-
-        @keyframes flashRedBorder {
-            0%, 100% {
-                border-color: #f43f5e;
-                box-shadow: 0 0 20px rgba(244, 63, 94, 0.8);
-                background: rgba(225, 29, 72, 0.35);
-            }
-            50% {
-                border-color: rgba(255, 255, 255, 0.1);
-                box-shadow: none;
-                background: rgba(18, 24, 38, 0.85);
-            }
-        }
-        .card-flash-red {
-            animation: flashRedBorder 1s infinite;
-        }
-
         .active-tab-red {
             background: rgba(225, 29, 72, 0.15);
             border: 1px solid #e11d48 !important;
@@ -81,7 +43,7 @@
         }
     </style>
 </head>
-<body class="text-slate-200 min-h-screen pb-12 relative">
+<body class="text-slate-200 min-h-screen pb-12">
 
     <header class="text-center pt-8 pb-4">
         <h1 class="text-3xl md:text-4xl font-black font-gaming tracking-wider text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.4)]">
@@ -139,31 +101,6 @@
 
     </main>
 
-    <!-- Modal แจ้งเตือนปลดล็อก VIP -->
-    <div id="vip-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-amber-500/40 rounded-2xl max-w-md w-full p-6 text-center shadow-[0_0_30px_rgba(245,158,11,0.2)]">
-            <div class="text-4xl mb-3">🔒</div>
-            <h3 class="text-xl font-bold font-gaming text-amber-400 mb-2">ปลดล็อกห้อง VIP</h3>
-            <p class="text-sm text-slate-300 mb-4">
-                ห้องนี้ถูกล็อคไว้เฉพาะสมาชิก VIP<br>
-                หากต้องการปลดล็อกใช้งานห้องนี้ หรือเช่าห้องแบบส่วนตัว<br>
-                สามารถติดต่อแอดมินเพื่อชำระเงินได้ทันที!
-            </p>
-            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-left mb-6 font-mono text-xs text-slate-400 space-y-1">
-                <p>💬 Discord: <span class="text-amber-400 font-bold">VALENTILE</span></p>
-                <p>⚡ สถานะ: เปิดรับปลดล็อกรายห้อง / ถาวร</p>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="closeVipModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-xl text-sm transition">
-                    ปิดหน้าต่าง
-                </button>
-                <a href="https://discord.gg/XgwRMhg7hB" target="_blank" onclick="closeVipModal()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold font-gaming py-2 rounded-xl text-sm transition text-center flex items-center justify-center">
-                    ติดต่อแอดมิน
-                </a>
-            </div>
-        </div>
-    </div>
-
     <script>
         let myUserId = localStorage.getItem('warz_user_id');
         if (!myUserId) {
@@ -171,6 +108,7 @@
             localStorage.setItem('warz_user_id', myUserId);
         }
 
+        // ตัวแปรจำลองชื่อ Discord (เดี๋ยวตอนทำ Discord OAuth2 แค่เปลี่ยนค่าตรงนี้ให้รับจาก Discord)
         let currentDiscordUser = localStorage.getItem('discord_username') || "VALENTILE";
 
         let currentType = 'Premium';
@@ -178,40 +116,6 @@
         
         let bossesData = [];
         let serverTimeOffset = 0;
-        let playedAlerts = new Set();
-
-        function playBossSpawnSound() {
-            try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc1 = audioCtx.createOscillator();
-                const gain1 = audioCtx.createGain();
-                osc1.type = 'sine';
-                osc1.frequency.value = 880;
-                osc1.connect(gain1);
-                gain1.connect(audioCtx.destination);
-                osc1.start(audioCtx.currentTime);
-                osc1.stop(audioCtx.currentTime + 0.15);
-
-                const osc2 = audioCtx.createOscillator();
-                const gain2 = audioCtx.createGain();
-                osc2.type = 'sine';
-                osc2.frequency.value = 1200;
-                osc2.connect(gain2);
-                gain2.connect(audioCtx.destination);
-                osc2.start(audioCtx.currentTime + 0.18);
-                osc2.stop(audioCtx.currentTime + 0.4);
-            } catch (e) {
-                console.log("Audio blocked:", e);
-            }
-        }
-
-        function openVipModal() {
-            document.getElementById('vip-modal').classList.remove('hidden');
-        }
-
-        function closeVipModal() {
-            document.getElementById('vip-modal').classList.add('hidden');
-        }
 
         function selectServerType(type) {
             currentType = type;
@@ -261,8 +165,6 @@
         }
 
         async function spawnBoss(id) {
-            localStorage.setItem(`my_spawn_${id}`, 'true');
-
             await fetch('/api/bosses/spawn', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -272,9 +174,6 @@
         }
 
         async function resetBoss(id) {
-            localStorage.removeItem(`my_spawn_${id}`);
-            playedAlerts.delete(id);
-
             await fetch('/api/bosses/reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -284,8 +183,6 @@
         }
 
         async function undoBoss(id) {
-            localStorage.setItem(`my_spawn_${id}`, 'true');
-
             const res = await fetch('/api/bosses/undo', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -305,38 +202,10 @@
             bossesData.forEach(boss => {
                 const card = document.createElement('div');
                 
-                if (boss.isLocked) {
-                    card.className = "glass-card card-locked rounded-lg p-4 flex flex-col justify-between text-center relative overflow-hidden";
-                    card.innerHTML = `
-                        <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs font-bold font-gaming text-slate-400 tracking-wider">
-                                    TH ${boss.serverName.toUpperCase()}
-                                </span>
-                                <span class="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold">🔒 VIP LOCKED</span>
-                            </div>
-                            
-                            <div class="text-xl font-bold font-gaming text-amber-500/60 my-4 tracking-widest flex items-center justify-center gap-2">
-                                <span>🔒</span> <span>LOCKED</span>
-                            </div>
-                        </div>
-
-                        <div class="mt-2 border-t border-slate-800/80 pt-3">
-                            <button onclick="openVipModal()" class="w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded py-1.5 text-xs font-bold font-gaming transition">
-                                🔓 ติดต่อปลดล็อกห้อง
-                            </button>
-                        </div>
-                    `;
-                    container.appendChild(card);
-                    return;
-                }
-
                 let timerDisplay = "00:00:00";
                 let timerColor = "text-slate-600";
                 let inUse = false;
                 let canUndo = false;
-                let cardStyleClass = "glass-card";
-                let badgeClass = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
 
                 const now = Date.now() + serverTimeOffset;
 
@@ -354,39 +223,11 @@
                         const seconds = totalSeconds % 60;
 
                         timerDisplay = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-                        if (totalSeconds > 1800) {
-                            cardStyleClass = "glass-card card-green";
-                            timerColor = "text-emerald-400 font-bold";
-                            badgeClass = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
-                        } else if (totalSeconds > 600) {
-                            cardStyleClass = "glass-card card-yellow";
-                            timerColor = "text-amber-400 font-bold";
-                            badgeClass = "bg-amber-500/20 text-amber-400 border-amber-500/30";
-                        } else if (totalSeconds > 10) {
-                            cardStyleClass = "glass-card card-red";
-                            timerColor = "text-rose-400 font-bold";
-                            badgeClass = "bg-rose-500/20 text-rose-400 border-rose-500/30";
-                        } else {
-                            cardStyleClass = "glass-card card-flash-red";
-                            timerColor = "text-rose-400 font-bold animate-pulse";
-                            badgeClass = "bg-rose-500/40 text-rose-300 border-rose-400";
-                        }
-
+                        timerColor = "text-emerald-400 font-bold";
                     } else {
                         timerDisplay = "READY!";
                         timerColor = "text-emerald-400 font-bold animate-pulse";
-                        cardStyleClass = "glass-card";
-
-                        const isMySpawn = localStorage.getItem(`my_spawn_${boss.id}`) === 'true';
-                        if (isMySpawn && !playedAlerts.has(boss.id)) {
-                            playBossSpawnSound();
-                            playedAlerts.add(boss.id);
-                        }
                     }
-                } else {
-                    localStorage.removeItem(`my_spawn_${boss.id}`);
-                    playedAlerts.delete(boss.id);
                 }
 
                 if (boss.resetAt && boss.previousNextSpawn) {
@@ -397,7 +238,11 @@
                     }
                 }
 
-                card.className = `${cardStyleClass} rounded-lg p-4 flex flex-col justify-between text-center relative overflow-hidden`;
+                if (inUse) {
+                    card.className = "glass-card card-in-use rounded-lg p-4 flex flex-col justify-between text-center relative overflow-hidden";
+                } else {
+                    card.className = "glass-card rounded-lg p-4 flex flex-col justify-between text-center relative overflow-hidden";
+                }
 
                 const spawnBtnAttr = inUse ? "disabled" : `onclick="spawnBoss(${boss.id})"`;
                 const spawnBtnClass = inUse 
@@ -414,8 +259,9 @@
                     ? "bg-rose-950/80 hover:bg-rose-600/30 text-rose-400 border border-rose-500/40 hover:border-rose-500 cursor-pointer" 
                     : "bg-slate-900 text-slate-700 border border-slate-800 cursor-not-allowed opacity-40";
 
+                // เปลี่ยนป้าย IN USE เป็นชื่อคนคีย์เวลา
                 const userBadge = inUse && boss.createdBy 
-                    ? `<span class="text-[10px] border px-2 py-0.5 rounded font-bold max-w-[110px] truncate ${badgeClass}">👤 ${boss.createdBy}</span>` 
+                    ? `<span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-bold max-w-[110px] truncate">👤 ${boss.createdBy}</span>` 
                     : '';
 
                 card.innerHTML = `

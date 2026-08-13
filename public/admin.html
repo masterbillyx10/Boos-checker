@@ -7,19 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Rajdhani', sans-serif;
-            background-color: #0b0e14;
-        }
-        .font-gaming {
-            font-family: 'Orbitron', sans-serif;
-        }
+        body { font-family: 'Rajdhani', sans-serif; background-color: #0b0e14; }
+        .font-gaming { font-family: 'Orbitron', sans-serif; }
     </style>
 </head>
 <body class="text-slate-200 min-h-screen p-4 md:p-8">
 
     <div class="max-w-5xl mx-auto">
-        <!-- Header -->
         <header class="flex justify-between items-center mb-8 pb-4 border-b border-slate-800">
             <div>
                 <h1 class="text-2xl md:text-3xl font-black font-gaming text-amber-400">⚙️ ADMIN CONTROL PANEL</h1>
@@ -30,7 +24,6 @@
             </a>
         </header>
 
-        <!-- Admin Auth Bar -->
         <div class="bg-slate-900 border border-amber-500/30 p-4 rounded-xl mb-8 flex flex-col md:flex-row gap-4 items-center justify-between shadow-[0_0_15px_rgba(245,158,11,0.1)]">
             <div class="w-full md:w-auto flex-1">
                 <label class="block text-xs font-bold text-amber-400 mb-1 font-gaming">🔑 ADMIN KEY</label>
@@ -43,19 +36,14 @@
         </div>
 
         <div id="admin-content" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            <!-- ส่วนที่ 1: รายชื่อคนออนไลน์ + ปุ่มเตะออก -->
             <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl h-fit">
                 <h2 class="text-base font-bold font-gaming text-rose-400 mb-4 flex items-center justify-between">
                     <span>🔴 ONLINE USERS</span>
                     <span id="user-count-badge" class="bg-rose-500/20 text-rose-400 text-xs px-2 py-0.5 rounded border border-rose-500/30">0</span>
                 </h2>
-                <div id="online-users-list" class="space-y-2 max-h-96 overflow-y-auto pr-1">
-                    <!-- แสดงรายชื่อคนออนไลน์ -->
-                </div>
+                <div id="online-users-list" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
             </div>
 
-            <!-- ส่วนที่ 2: ตารางจัดการห้อง (Lock / Unlock VIP) -->
             <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                     <h2 class="text-base font-bold font-gaming text-emerald-400">🔒 จัดการปลดล็อกห้อง VIP</h2>
@@ -75,11 +63,8 @@
                     </div>
                 </div>
 
-                <div id="rooms-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-2">
-                    <!-- แสดงรายการห้อง -->
-                </div>
+                <div id="rooms-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-2"></div>
             </div>
-
         </div>
     </div>
 
@@ -98,19 +83,13 @@
                 });
                 const data = await res.json();
 
-                if (!data.success) {
-                    alert(data.message);
-                    return;
-                }
+                if (!data.success) return alert(data.message);
 
                 document.getElementById('admin-content').classList.remove('hidden');
                 adminBosses = data.bosses;
 
-                // Render ออนไลน์
                 renderOnlineUsers(data.onlineUsers);
-                // Render รายชื่อห้อง
                 filterAdminRooms();
-
             } catch(e) {
                 alert('เกิดข้อผิดพลาดในการดึงข้อมูล');
             }
@@ -182,7 +161,7 @@
             });
             const data = await res.json();
             if (data.success) {
-                // อัปเดตข้อมูลท้องถิ่น
+                // อัปเดตข้อมูลในอาร์เรย์และดึง UI ใหม่ทันที
                 const b = adminBosses.find(x => x.id === bossId);
                 if (b) b.isLocked = !currentLocked;
                 filterAdminRooms();

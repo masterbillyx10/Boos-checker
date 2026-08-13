@@ -41,7 +41,7 @@
         </div>
 
         <div id="admin-content" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- ซ้าย: คนออนไลน์ (คลิกเลือก) -->
+            <!-- ซ้าย: คนออนไลน์ -->
             <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl h-fit">
                 <h2 class="text-base font-bold font-gaming text-rose-400 mb-2 flex items-center justify-between">
                     <span>🔴 ONLINE USERS</span>
@@ -67,6 +67,9 @@
                     <div class="flex flex-wrap gap-2 w-full sm:w-auto">
                         <button onclick="unlockAllRooms()" class="bg-emerald-600/20 border border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded p-1.5 text-xs font-bold transition">
                             🔓 ปลดล็อคสาธารณะทั้งหมด
+                        </button>
+                        <button onclick="lockAllRooms()" class="bg-amber-600/20 border border-amber-500 text-amber-400 hover:bg-amber-500 hover:text-white rounded p-1.5 text-xs font-bold transition">
+                            🔒 ล็อคห้องทั้งหมด (011-050)
                         </button>
 
                         <select id="filter-type" onchange="filterAdminRooms()" class="bg-slate-950 border border-slate-700 rounded p-1.5 text-xs">
@@ -186,7 +189,17 @@
                     : '';
 
                 let actionButton = '';
-                if (selectedUser) {
+                
+                if (!isLocked) {
+                    // ถ้าห้องเปิดสาธารณะอยู่ -> ขึ้นปุ่มสั่งล็อคห้องกลับคืน
+                    actionButton = `
+                        <button onclick="toggleGlobalLock(${boss.id}, true)" 
+                            class="w-full mt-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 rounded py-1 font-bold font-gaming transition">
+                            🔒 สั่งล็อคห้องนี้ (เปิด VIP)
+                        </button>
+                    `;
+                } else if (selectedUser) {
+                    // ถ้าห้องล็อค และเลือกผู้ใช้รายบุคคลอยู่
                     if (isSelectedUserAllowed) {
                         actionButton = `
                             <button onclick="revokeUserRoom(${boss.id}, '${selectedUser.id}')" 
@@ -203,6 +216,7 @@
                         `;
                     }
                 } else {
+                    // ถ้าห้องล็อค แต่ยังไม่ได้เลือกผู้ใช้
                     actionButton = `
                         <button onclick="alert('กรุณาคลิกเลือกผู้ใช้ออนไลน์จากแถบซ้ายมือก่อน!')" 
                             class="w-full mt-2 bg-slate-800 text-slate-500 border border-slate-700/50 rounded py-1 font-bold font-gaming transition cursor-pointer">
@@ -260,11 +274,35 @@
             if (data.success) loadAdminData();
         }
 
+        async function toggleGlobalLock(bossId, isLocked) {
+            const key = document.getElementById('admin-key').value;
+            const res = await fetch('/api/admin/toggle-global-lock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adminKey: key, bossId: bossId, isLocked: isLocked })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) loadAdminData();
+        }
+
         async function unlockAllRooms() {
             if (!confirm("คุณต้องการ ปลดล็อคทุกห้องเป็นสาธารณะ (เปิดให้ทุกคนใช้งานฟรี) ใช่หรือไม่?")) return;
-            
             const key = document.getElementById('admin-key').value;
             const res = await fetch('/api/admin/unlock-all', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adminKey: key })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) loadAdminData();
+        }
+
+        async function lockAllRooms() {
+            if (!confirm("คุณต้องการ สั่งล็อคห้องมาตรฐาน (011-050) กลับคืนใช่หรือไม่?")) return;
+            const key = document.getElementById('admin-key').value;
+            const res = await fetch('/api/admin/lock-all', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ adminKey: key })

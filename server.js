@@ -50,9 +50,11 @@ for (let i = 1; i <= 50; i++) {
             killedAt: null,
             nextSpawn: null,
             previousNextSpawn: null,
+            previousCreatedBy: null,
+            previousCreatedById: null,
             resetAt: null,
             createdBy: null,
-            createdById: null // บันทึก ID ผู้จับเวลาเพื่อล็อกไม่ให้คนอื่นยุ่ง
+            createdById: null
         });
     });
 }
@@ -73,6 +75,8 @@ for (let i = 1; i <= 50; i++) {
             killedAt: null,
             nextSpawn: null,
             previousNextSpawn: null,
+            previousCreatedBy: null,
+            previousCreatedById: null,
             resetAt: null,
             createdBy: null,
             createdById: null
@@ -149,7 +153,7 @@ app.get('/api/auth/discord/callback', (req, res) => {
     tokenReq.end();
 });
 
-// ---------------- API สำหรับหน้าเว็บหลัก ----------------
+// ---------------- API หน้าเว็บหลัก ----------------
 
 app.get('/api/bosses', (req, res) => {
     const { serverType, location, userId, username } = req.query;
@@ -202,6 +206,8 @@ app.post('/api/bosses/spawn', (req, res) => {
         boss.createdBy = username || "Guest";
         boss.createdById = userId || null;
         boss.previousNextSpawn = null;
+        boss.previousCreatedBy = null;
+        boss.previousCreatedById = null;
         boss.resetAt = null;
         return res.json({ success: true, boss });
     }
@@ -213,13 +219,15 @@ app.post('/api/bosses/reset', (req, res) => {
     const boss = bosses.find(b => b.id === Number(id));
     
     if (boss) {
-        // ตรวจสอบสิทธิ์: ป้องกันไม่ให้คนอื่นมา Reset ช่องที่เรากด SPAWN ไว้
+        // เฉพาะเจ้าของช่อง หรือไม่มีเจ้าของระบุ เท่านั้นที่กด Reset ได้
         if (boss.createdById && boss.createdById !== userId) {
             return res.status(403).json({ success: false, message: "คุณไม่ใช่เจ้าของช่องนี้ ไม่สามารถกด RESET ได้" });
         }
 
         if (boss.nextSpawn) {
             boss.previousNextSpawn = boss.nextSpawn;
+            boss.previousCreatedBy = boss.createdBy;
+            boss.previousCreatedById = boss.createdById;
             boss.resetAt = new Date().toISOString();
         }
         boss.killedAt = null;
@@ -248,10 +256,14 @@ app.post('/api/bosses/undo', (req, res) => {
             return res.status(400).json({ success: false, message: "เกินระยะเวลา 3 นาที ไม่สามารถ Undo ได้" });
         }
 
+        // คืนค่าเวลากลับคืน
         boss.nextSpawn = boss.previousNextSpawn;
-        boss.createdBy = username || "Guest";
-        boss.createdById = userId || null;
+        boss.createdBy = boss.previousCreatedBy || username || "Guest";
+        boss.createdById = boss.previousCreatedById || userId || null;
+        
         boss.previousNextSpawn = null;
+        boss.previousCreatedBy = null;
+        boss.previousCreatedById = null;
         boss.resetAt = null;
         return res.json({ success: true, boss });
     }

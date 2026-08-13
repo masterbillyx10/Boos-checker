@@ -60,7 +60,11 @@ app.get('/api/bosses', (req, res) => {
     if (serverType) result = result.filter(b => b.serverType === serverType);
     if (location) result = result.filter(b => b.location === location);
 
-    res.json(result);
+    // ส่งเวลาปัจจุบันของเซิร์ฟเวอร์ (serverTime) แนบไปให้หน้าเว็บด้วย
+    res.json({
+        serverTime: new Date().getTime(),
+        bosses: result
+    });
 });
 
 // 1. API SPAWN (คีย์เวลาบอส)

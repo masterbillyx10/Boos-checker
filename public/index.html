@@ -364,7 +364,6 @@
             fetchBosses(true);
         }
 
-        // ฟังก์ชันวาดการ์ดแบบประสิทธิภาพสูง (ไม่ Rebuild DOM ทิ้งทุกวินาที)
         function renderBossGrid(forceRebuild = false) {
             const container = document.getElementById('boss-grid');
             if (bossesData.length === 0) return;
@@ -416,10 +415,9 @@
                 let cardStyleClass = "clean-card";
                 let badgeClass = "bg-[#ff6b00]/10 text-[#ff6b00] border-[#ff6b00]/30";
 
-                // ตรวจสอบว่าเป็นเจ้าของช่องหรือไม่
                 const isOwner = boss.createdById === myUserId;
                 const isAdmin = ADMIN_USERNAMES.includes((currentDiscordUser || '').toLowerCase());
-                const canResetOrUndo = isOwner || isAdmin;
+                const canReset = isOwner || isAdmin;
 
                 if (boss.nextSpawn) {
                     const spawnTime = new Date(boss.nextSpawn).getTime();
@@ -470,6 +468,7 @@
                     playedAlerts.delete(boss.id);
                 }
 
+                // ตรวจสอบเงื่อนไข Undo: ถ้ามีข้อมูล Reset ที่ไม่เกิน 3 นาที ทุกคนในทีมสามารถกด UNDO ช่วยกันได้
                 if (boss.resetAt && boss.previousNextSpawn) {
                     const resetTime = new Date(boss.resetAt).getTime();
                     const diffResetMinutes = (now - resetTime) / (1000 * 60);
@@ -480,19 +479,19 @@
 
                 card.className = `${cardStyleClass} rounded-xl p-4 flex flex-col justify-between text-center relative overflow-hidden`;
 
-                // สิทธิ์ปุ่มควบคุม
                 const spawnBtnAttr = inUse ? "disabled" : `onclick="spawnBoss(${boss.id})"`;
                 const spawnBtnClass = inUse 
                     ? "bg-[#121212] text-slate-600 border border-[#282828] cursor-not-allowed opacity-50" 
                     : "bg-[#ff6b00]/10 hover:bg-[#ff6b00] text-[#ff6b00] hover:text-black border border-[#ff6b00]/40 cursor-pointer font-bold";
 
-                const undoBtnAttr = (canUndo && canResetOrUndo) ? `onclick="undoBoss(${boss.id})"` : "disabled";
-                const undoBtnClass = (canUndo && canResetOrUndo) 
+                // เปิดสิทธิ์ให้กด UNDO ได้ทันทีเมื่อมีการ Reset ในช่วง 3 นาที
+                const undoBtnAttr = canUndo ? `onclick="undoBoss(${boss.id})"` : "disabled";
+                const undoBtnClass = canUndo 
                     ? "bg-amber-950/40 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 cursor-pointer animate-pulse font-bold" 
                     : "bg-[#121212] text-slate-700 border border-[#282828] cursor-not-allowed opacity-40";
 
-                const resetBtnAttr = (inUse && canResetOrUndo) ? `onclick="resetBoss(${boss.id})"` : "disabled";
-                const resetBtnClass = (inUse && canResetOrUndo) 
+                const resetBtnAttr = (inUse && canReset) ? `onclick="resetBoss(${boss.id})"` : "disabled";
+                const resetBtnClass = (inUse && canReset) 
                     ? "bg-rose-950/40 hover:bg-rose-600/30 text-rose-400 border border-rose-500/40 cursor-pointer font-bold" 
                     : "bg-[#121212] text-slate-700 border border-[#282828] cursor-not-allowed opacity-40";
 
@@ -529,12 +528,10 @@
             });
         }
 
-        // วนลูปเวลานับถอยหลังฝั่ง Client อย่างลื่นไหล (1 วินาที)
         setInterval(() => {
             if (currentDiscordUser) renderBossGrid(false);
         }, 1000);
 
-        // ดึงข้อมูลจาก Server ทุกๆ 3.5 วินาที ลดภาระ Network/CPU
         setInterval(() => fetchBosses(false), 3500);
         fetchBosses(true);
     </script>

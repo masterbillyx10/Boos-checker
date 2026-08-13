@@ -26,37 +26,31 @@ setInterval(() => {
 let bosses = [];
 let idCounter = 1;
 
-// สร้างข้อมูล Official 50 (1-10 ฟรี / 11-50 ล็อค)
 for (let i = 1; i <= 50; i++) {
     const serverName = `Official ${String(i).padStart(3, '0')}`;
-    const isFree = i <= 10; // 10 ห้องแรกฟรี
     LOCATIONS.forEach(loc => {
         bosses.push({
             id: idCounter++,
             serverType: "Official",
             serverName: serverName,
             location: loc,
-            isLocked: !isFree, // true = ล็อค, false = ฟรี
             killedAt: null,
             nextSpawn: null,
             previousNextSpawn: null,
             resetAt: null,
-            createdBy: null
+            createdBy: null // เพิ่มช่องเก็บชื่อ Discord
         });
     });
 }
 
-// สร้างข้อมูล Premium 50 (1-10 ฟรี / 11-50 ล็อค)
 for (let i = 1; i <= 50; i++) {
     const serverName = `Premium ${String(i).padStart(3, '0')}`;
-    const isFree = i <= 10; // 10 ห้องแรกฟรี
     LOCATIONS.forEach(loc => {
         bosses.push({
             id: idCounter++,
             serverType: "Premium",
             serverName: serverName,
             location: loc,
-            isLocked: !isFree,
             killedAt: null,
             nextSpawn: null,
             previousNextSpawn: null,
@@ -82,14 +76,12 @@ app.get('/api/bosses', (req, res) => {
     });
 });
 
+// รับ username เพิ่มเวลาคีย์ SPAWN
 app.post('/api/bosses/spawn', (req, res) => {
     const { id, username } = req.body;
     const boss = bosses.find(b => b.id === id);
     
     if (boss) {
-        if (boss.isLocked) {
-            return res.status(403).json({ success: false, message: "ห้องนี้ต้องได้รับการปลดล็อก VIP" });
-        }
         if (boss.nextSpawn && new Date(boss.nextSpawn) > new Date()) {
             return res.status(400).json({ success: false, message: "ช่องนี้กำลังใช้งานอยู่" });
         }
@@ -97,7 +89,7 @@ app.post('/api/bosses/spawn', (req, res) => {
         const now = new Date();
         boss.killedAt = now.toISOString();
         boss.nextSpawn = new Date(now.getTime() + RESPAWN_MINUTES * 60000).toISOString();
-        boss.createdBy = username || "Guest";
+        boss.createdBy = username || "Guest"; // บันทึกชื่อผู้กด
         boss.previousNextSpawn = null;
         boss.resetAt = null;
         return res.json({ success: true, boss });
@@ -115,7 +107,7 @@ app.post('/api/bosses/reset', (req, res) => {
         }
         boss.killedAt = null;
         boss.nextSpawn = null;
-        boss.createdBy = null;
+        boss.createdBy = null; // เคลียร์ชื่อคนคีย์
         return res.json({ success: true, boss });
     }
     res.status(404).json({ success: false, message: "Boss not found" });

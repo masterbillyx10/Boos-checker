@@ -99,6 +99,10 @@
     <script>
         let currentType = 'Premium';
         let currentCity = 'Norad Military Base';
+        
+        // ตัวแปรใหม่สำหรับเก็บข้อมูลและซิงค์เวลา
+        let bossesData = [];
+        let serverTimeOffset = 0;
 
         function selectServerType(type) {
             currentType = type;
@@ -130,9 +134,18 @@
 
         async function fetchBosses() {
             const url = `/api/bosses?serverType=${currentType}&location=${encodeURIComponent(currentCity)}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            renderBossGrid(data);
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                // คำนวณความห่างของเวลาคอมผู้ใช้ กับเวลาเซิร์ฟเวอร์
+                serverTimeOffset = data.serverTime - Date.now();
+                bossesData = data.bosses;
+                
+                renderBossGrid();
+            } catch(e) {
+                console.error("Error fetching bosses:", e);
+            }
         }
 
         async function spawnBoss(id) {
@@ -141,7 +154,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id })
             });
-            fetchBosses();
+            fetchBosses(); // โหลดข้อมูลใหม่ทันที
         }
 
         async function resetBoss(id) {
@@ -160,17 +173,18 @@
                 body: JSON.stringify({ id })
             });
             const data = await res.json();
-            if (!data.success) {
-                alert(data.message);
-            }
+            if (!data.success) alert(data.message);
             fetchBosses();
         }
 
-        function renderBossGrid(bosses) {
+        // ฟังก์ชันวาด UI ทำงานแยกต่างหากทุก 1 วินาที (ลื่นไหล ไม่รอเน็ต)
+        function renderBossGrid() {
             const container = document.getElementById('boss-grid');
+            if (bossesData.length === 0) return;
+            
             container.innerHTML = '';
 
-            bosses.forEach(boss => {
+            bossesData.forEach(boss => {
                 const card = document.createElement('div');
                 
                 let timerDisplay = "00:00:00";
@@ -178,8 +192,8 @@
                 let inUse = false;
                 let canUndo = false;
 
-                // ย้าย now มาไว้ในวนลูปเพื่อดึงเวลาจริงแบบเรียลไทม์
-                const now = Date.now();
+                // ใช้เวลาปัจจุบัน บวกกับส่วนต่างของเซิร์ฟเวอร์ เพื่อให้เวลาตรงกัน 100%
+                const now = Date.now() + serverTimeOffset;
 
                 if (boss.nextSpawn) {
                     const spawnTime = new Date(boss.nextSpawn).getTime();
@@ -188,9 +202,13 @@
                     if (diff > 0) {
                         inUse = true;
                         
-                        // คำนวณวินาทีรวมถอยหลังจริง
-                        const totalSeconds = Math.min(3600, Math.floor(diff / 1000));
+                        let totalSeconds = Math.floor(diff / 1000);
                         
+                        // ถ้าระบบคำนวณได้ 3600 (01:00:00) หรือเกิน ให้เริ่มที่ 3599 (59:59) ทันทีเพื่อความลื่นไหล
+                        if (totalSeconds >= 3600) {
+                            totalSeconds = 3599; 
+                        }
+
                         const hours = Math.floor(totalSeconds / 3600);
                         const minutes = Math.floor((totalSeconds % 3600) / 60);
                         const seconds = totalSeconds % 60;
@@ -262,7 +280,13 @@
             });
         }
 
-        setInterval(fetchBosses, 1000);
+        // แยกระบบประมวลผล : อัปเดตหน้าจอทุก 1 วินาทีจากข้อมูลในเครื่อง (ไม่หน่วง)
+        setInterval(renderBossGrid, 1000);
+        
+        // ดึงข้อมูลใหม่จาก Server ทุก 5 วินาที เพื่อให้ตรงกับเพื่อนคนอื่น
+        setInterval(fetchBosses, 5000);
+        
+        // โหลดครั้งแรก
         fetchBosses();
     </script>
 </body>

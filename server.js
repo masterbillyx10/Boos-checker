@@ -25,6 +25,7 @@ const RESPAWN_MINUTES = 60;
 const MAX_ACTIVE_SPAWNS_PER_USER = 7;
 
 let activeUsers = new Map();
+let registeredUsers = new Map(); // บันทึกรายชื่อผู้ใช้ทั้งหมดที่เคยล็อกอิน
 let auditLogs = [];
 
 function addAuditLog(action, username, details) {
@@ -169,11 +170,15 @@ app.get('/api/bosses', (req, res) => {
 
     if (userId && userId !== 'null' && userId !== 'guest') {
         const finalName = (username && username !== 'null' && username !== 'undefined' && username.trim() !== '') ? username : "Guest";
-        activeUsers.set(userId, {
+        
+        const userInfo = {
             id: userId,
             username: finalName,
             lastSeen: Date.now()
-        });
+        };
+
+        activeUsers.set(userId, userInfo);
+        registeredUsers.set(userId, userInfo); // บันทึกลงรายชื่อรวม
     }
 
     let filtered = bosses;
@@ -238,7 +243,6 @@ app.post('/api/bosses/reset', (req, res) => {
         const ADMIN_USERNAMES = ["hexeditorx10", "valentile"];
         const isAdmin = username && ADMIN_USERNAMES.includes(username.toLowerCase());
 
-        // คนอื่นห้ามยุ่งเด็ดขาด
         if (!isAdmin && boss.createdById && boss.createdById !== userId) {
             return res.status(403).json({ success: false, message: "คุณไม่ใช่เจ้าของช่องนี้ ไม่สามารถกด RESET ได้" });
         }
@@ -268,7 +272,6 @@ app.post('/api/bosses/undo', (req, res) => {
         const ADMIN_USERNAMES = ["hexeditorx10", "valentile"];
         const isAdmin = username && ADMIN_USERNAMES.includes(username.toLowerCase());
 
-        // คนอื่นห้ามกด Undo ช่องคนอื่น
         if (!isAdmin && boss.previousCreatedById && boss.previousCreatedById !== userId) {
             return res.status(403).json({ success: false, message: "คุณไม่ใช่เจ้าของช่องนี้ ไม่สามารถกด UNDO ได้" });
         }
@@ -306,10 +309,17 @@ app.post('/api/admin/data', (req, res) => {
     const { adminKey } = req.body;
     if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
 
-    const onlineList = Array.from(activeUsers.values());
+    // รวบรวมรายชื่อผู้ใช้ทั้งหมด พร้อมระบุสถานะออนไลน์ (true/false)
+    const allUsersList = Array.from(registeredUsers.values()).map(user => {
+        return {
+            ...user,
+            isOnline: activeUsers.has(user.id)
+        };
+    });
+
     res.json({ 
         success: true, 
-        onlineUsers: onlineList, 
+        onlineUsers: allUsersList, 
         bosses: bosses,
         auditLogs: auditLogs
     });
@@ -403,7 +413,7 @@ app.post('/api/admin/kick-user', (req, res) => {
         addAuditLog("ADMIN_KICK", "ADMIN", `User ID: ${targetUserId}`);
         return res.json({ success: true, message: `เตะผู้ใช้ออกเรียบร้อย` });
     }
-    res.status(404).json({ success: false, message: "ไม่พบผู้ใช้ในระบบ" });
+    res.status(404).json({ success: false, message: "ไม่พบผู้ใช้ในระบบออนไลน์" });
 });
 
 app.listen(PORT, () => {

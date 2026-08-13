@@ -19,7 +19,6 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             transition: all 0.3s ease;
         }
-        /* ช่องเมื่อมีการใช้งาน (Active / In-Use State) -> โทนสีเขียวเรืองแสง */
         .card-in-use {
             background: rgba(6, 78, 59, 0.25) !important;
             border: 1px solid #10b981 !important;
@@ -57,7 +56,6 @@
 
     <main class="max-w-6xl mx-auto px-4">
         
-        <!-- Tab สลับ Server -->
         <div class="flex justify-center gap-3 mb-6">
             <button id="tab-premium" onclick="selectServerType('Premium')" 
                 class="active-tab-red px-6 py-2.5 rounded-lg text-sm font-bold font-gaming transition-all duration-200">
@@ -69,7 +67,6 @@
             </button>
         </div>
 
-        <!-- เลือกเมือง -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <button onclick="selectCity('Norad Military Base')" id="city-Norad Military Base" class="active-city glass-card p-3 rounded-lg text-center transition hover:bg-slate-800/80">
                 <div class="text-lg">🏢</div>
@@ -95,7 +92,6 @@
             </span>
         </div>
 
-        <!-- Grid แสดงช่องบอส -->
         <div id="boss-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
 
     </main>
@@ -184,16 +180,16 @@
 
                 const now = new Date().getTime();
 
-                // ตรวจสอบสถานะการนับถอยหลัง
                 if (boss.nextSpawn) {
                     const spawnTime = new Date(boss.nextSpawn).getTime();
                     const diff = spawnTime - now;
 
                     if (diff > 0) {
-                        inUse = true; // มีคนใช้อยู่
+                        inUse = true;
                         
-                        // ปรับการคำนวณวินาทีให้ลงตัวเป๊ะ 01:00:00
-                        const totalSeconds = Math.floor(diff / 1000);
+                        // ล็อคไม่ให้เกิน 3600 วินาที (1 ชั่วโมงพอดี)
+                        const totalSeconds = Math.min(3600, Math.ceil(diff / 1000));
+                        
                         const hours = Math.floor(totalSeconds / 3600);
                         const minutes = Math.floor((totalSeconds % 3600) / 60);
                         const seconds = totalSeconds % 60;
@@ -206,7 +202,6 @@
                     }
                 }
 
-                // ตรวจสอบเงื่อนไขการกด Undo (ต้องกด Reset มาไม่เกิน 3 นาที)
                 if (boss.resetAt && boss.previousNextSpawn) {
                     const resetTime = new Date(boss.resetAt).getTime();
                     const diffResetMinutes = (now - resetTime) / (1000 * 60);
@@ -215,7 +210,6 @@
                     }
                 }
 
-                // สไตล์การแสดงผลตามสถานะ
                 if (inUse) {
                     card.className = "glass-card card-in-use rounded-lg p-4 flex flex-col justify-between text-center relative overflow-hidden";
                 } else {

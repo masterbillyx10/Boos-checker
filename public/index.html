@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเช็คเวลาเกิดบอส</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen p-6">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6 text-emerald-400 text-center">⚔️ ระบบบันทึกเวลาเกิดบอส</h1>
+        
+        <div id="boss-list" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- ข้อมูลบอสจะถูกสร้างด้วย JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        async function fetchBosses() {
+            const res = await fetch('/api/bosses');
+            const data = await res.json();
+            renderBosses(data);
+        }
+
+        async function killBoss(id) {
+            await fetch('/api/bosses/kill', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            fetchBosses();
+        }
+
+        async function resetBoss(id) {
+            await fetch('/api/bosses/reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            fetchBosses();
+        }
+
+        function renderBosses(bosses) {
+            const container = document.getElementById('boss-list');
+            container.innerHTML = '';
+
+            bosses.forEach(boss => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-800 border border-slate-700 rounded-xl p-5 flex flex-col justify-between shadow-lg";
+
+                let statusHTML = '';
+                let timerHTML = '';
+
+                if (!boss.nextSpawn) {
+                    statusHTML = `<span class="inline-block bg-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1 rounded-full font-semibold">พร้อมล่า / เกิดอยู่</span>`;
+                    timerHTML = `<div class="text-2xl font-bold my-4 text-slate-400">-- : -- : --</div>`;
+                } else {
+                    const now = new Date().getTime();
+                    const spawnTime = new Date(boss.nextSpawn).getTime();
+                    const diff = spawnTime - now;
+
+                    if (diff <= 0) {
+                        statusHTML = `<span class="inline-block bg-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1 rounded-full font-semibold">เกิดแล้ว!</span>`;
+                        timerHTML = `<div class="text-2xl font-bold my-4 text-emerald-400 animate-pulse">AVAILABLE</div>`;
+                    } else {
+                        statusHTML = `<span class="inline-block bg-rose-500/20 text-rose-400 text-xs px-2.5 py-1 rounded-full font-semibold">กำลังคูลดาวน์</span>`;
+                        
+                        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                        
+                        const formatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                        timerHTML = `<div class="text-2xl font-bold my-4 text-amber-400">${formatted}</div>`;
+                    }
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <h2 class="text-xl font-bold">${boss.name}</h2>
+                            ${statusHTML}
+                        </div>
+                        <p class="text-xs text-slate-400">ระยะเวลาเกิด: ${boss.respawnMinutes} นาที</p>
+                        ${timerHTML}
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="killBoss(${boss.id})" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 rounded-lg text-sm transition">
+                            บันทึกการตาย
+                        </button>
+                        <button onclick="resetBoss(${boss.id})" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold px-3 py-2 rounded-lg text-sm transition">
+                            รีเซ็ต
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // รีเฟรชหน้าจอทุกๆ 1 วินาทีเพื่ออัปเดตเวลาถอยหลัง
+        setInterval(fetchBosses, 1000);
+        fetchBosses();
+    </script>
+</body>
+</html>

@@ -69,14 +69,16 @@ app.post('/api/bosses/spawn', (req, res) => {
     const boss = bosses.find(b => b.id === id);
     
     if (boss) {
-        // ถ้าช่องนี้กำลังนับถอยหลังอยู่ ป้องกันการกดซ้ำ
         if (boss.nextSpawn && new Date(boss.nextSpawn) > new Date()) {
             return res.status(400).json({ success: false, message: "ช่องนี้กำลังใช้งานอยู่" });
         }
 
         const now = new Date();
+        // คำนวณเวลาเกิดถัดไป ให้ลงล็อค 60 นาทีพอดี (60 * 60 * 1000 มิลลิวินาที)
+        const nextSpawnTime = new Date(now.getTime() + (60 * 60 * 1000));
+        
         boss.killedAt = now.toISOString();
-        boss.nextSpawn = new Date(now.getTime() + RESPAWN_MINUTES * 60000).toISOString();
+        boss.nextSpawn = nextSpawnTime.toISOString();
         boss.previousNextSpawn = null;
         boss.resetAt = null;
         return res.json({ success: true, boss });

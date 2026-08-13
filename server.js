@@ -22,7 +22,17 @@ const LOCATIONS = [
 ];
 
 const RESPAWN_MINUTES = 60;
+const MAX_ACTIVE_SPAWNS_PER_USER = 5; // จำกัดการกด SPAWN ค้างไว้ไม่เกิน 5 ห้อง
+const VOTE_RESET_THRESHOLD = 3; // จำนวนโหวตเพื่อ Reset ห้อง
+
 let activeUsers = new Map();
+let auditLogs = []; // ประวัติการใช้งานสำหรับแอดมิน
+
+function addAuditLog(action, username, details) {
+    const time = new Date().toLocaleTimeString('th-TH');
+    auditLogs.unshift({ time, action, username, details });
+    if (auditLogs.length > 50) auditLogs.pop(); // เก็บย้อนหลัง 50 รายการ
+}
 
 setInterval(() => {
     const now = Date.now();
@@ -54,7 +64,8 @@ for (let i = 1; i <= 50; i++) {
             previousCreatedById: null,
             resetAt: null,
             createdBy: null,
-            createdById: null
+            createdById: null,
+            votes: [] // รายชื่อ User ID ที่กดโหวตแจ้งบอสยังไม่ตาย
         });
     });
 }
@@ -79,7 +90,8 @@ for (let i = 1; i <= 50; i++) {
             previousCreatedById: null,
             resetAt: null,
             createdBy: null,
-            createdById: null
+            createdById: null,
+            votes: []
         });
     });
 }
@@ -176,7 +188,9 @@ app.get('/api/bosses', (req, res) => {
         const isLockedForThisUser = b.isLocked && !isUserAllowed;
         return {
             ...b,
-            isLocked: isLockedForThisUser
+            isLocked: isLockedForThisUser,
+            voteCount: b.votes ? b.votes.length : 0,
+            hasVoted: userId && b.votes ? b.votes.includes(userId) : false
         };
     });
 
@@ -200,6 +214,12 @@ app.post('/api/bosses/spawn', (req, res) => {
             return res.status(400).json({ success: false, message: "ช่องนี้กำลังใช้งานอยู่" });
         }
 
+        // ตรวจสอบจำนวน SPAWN ค้างไว้ของผู้ใช้
+        const userActiveSpawns = bosses.filter(b => b.createdById === userId && b.nextSpawn && new Date(b.nextSpawn) > new Date());
+        if (userActiveSpawns.length >= MAX_ACTIVE_SPAWNS_PER_USER) {
+            return res.status(400).json({ success: false, message: `คุณกด SPAWN ค้างไว้เกิน ${MAX_ACTIVE_SPAWNS_PER_USER} ห้องแล้ว! กรุณารอบอสเกิดหรือกด RESET ห้องเดิมก่อน` });
+        }
+
         const now = new Date();
         boss.killedAt = now.toISOString();
         boss.nextSpawn = new Date(now.getTime() + RESPAWN_MINUTES * 60000).toISOString();
@@ -209,17 +229,19 @@ app.post('/api/bosses/spawn', (req, res) => {
         boss.previousCreatedBy = null;
         boss.previousCreatedById = null;
         boss.resetAt = null;
+        boss.votes = [];
+
+        addAuditLog("SPAWN", username || "Guest", `${boss.serverName} (${boss.location})`);
         return res.json({ success: true, boss });
     }
     res.status(404).json({ success: false, message: "Boss not found" });
 });
 
 app.post('/api/bosses/reset', (req, res) => {
-    const { id, userId } = req.body;
+    const { id, userId, username } = req.body;
     const boss = bosses.find(b => b.id === Number(id));
     
     if (boss) {
-        // เฉพาะเจ้าของช่อง หรือไม่มีเจ้าของระบุ เท่านั้นที่กด Reset ได้
         if (boss.createdById && boss.createdById !== userId) {
             return res.status(403).json({ success: false, message: "คุณไม่ใช่เจ้าของช่องนี้ ไม่สามารถกด RESET ได้" });
         }
@@ -234,6 +256,9 @@ app.post('/api/bosses/reset', (req, res) => {
         boss.nextSpawn = null;
         boss.createdBy = null;
         boss.createdById = null;
+        boss.votes = [];
+
+        addAuditLog("RESET", username || "Guest", `${boss.serverName} (${boss.location})`);
         return res.json({ success: true, boss });
     }
     res.status(404).json({ success: false, message: "Boss not found" });
@@ -256,7 +281,6 @@ app.post('/api/bosses/undo', (req, res) => {
             return res.status(400).json({ success: false, message: "เกินระยะเวลา 3 นาที ไม่สามารถ Undo ได้" });
         }
 
-        // คืนค่าเวลากลับคืน
         boss.nextSpawn = boss.previousNextSpawn;
         boss.createdBy = boss.previousCreatedBy || username || "Guest";
         boss.createdById = boss.previousCreatedById || userId || null;
@@ -265,9 +289,58 @@ app.post('/api/bosses/undo', (req, res) => {
         boss.previousCreatedBy = null;
         boss.previousCreatedById = null;
         boss.resetAt = null;
+        boss.votes = [];
+
+        addAuditLog("UNDO", username || "Guest", `${boss.serverName} (${boss.location})`);
         return res.json({ success: true, boss });
     }
     res.status(404).json({ success: false, message: "Boss not found" });
+});
+
+// API สำหรับระบบโหวตรายงานบอสยังไม่ตาย (Vote Reset)
+app.post('/api/bosses/vote-reset', (req, res) => {
+    const { id, userId, username } = req.body;
+    const boss = bosses.find(b => b.id === Number(id));
+
+    if (!boss || !boss.nextSpawn || new Date(boss.nextSpawn) <= new Date()) {
+        return res.status(400).json({ success: false, message: "ช่องนี้ไม่ได้กำลังนับถอยหลัง" });
+    }
+
+    if (!userId) {
+        return res.status(401).json({ success: false, message: "กรุณาเข้าสู่ระบบก่อนลงโหวต" });
+    }
+
+    if (boss.createdById === userId) {
+        return res.status(400).json({ success: false, message: "คุณเป็นเจ้าของช่อง สามารถกด RESET ได้โดยตรง" });
+    }
+
+    if (!boss.votes) boss.votes = [];
+
+    if (boss.votes.includes(userId)) {
+        return res.status(400).json({ success: false, message: "คุณได้ลงโหวตช่องนี้ไปแล้ว" });
+    }
+
+    boss.votes.push(userId);
+    addAuditLog("VOTE_REPORT", username || "Guest", `${boss.serverName} (${boss.location}) [${boss.votes.length}/${VOTE_RESET_THRESHOLD}]`);
+
+    // หากโหวตครบ 3 คน -> สั่ง Reset ทันที
+    if (boss.votes.length >= VOTE_RESET_THRESHOLD) {
+        boss.previousNextSpawn = boss.nextSpawn;
+        boss.previousCreatedBy = boss.createdBy;
+        boss.previousCreatedById = boss.createdById;
+        boss.resetAt = new Date().toISOString();
+
+        boss.killedAt = null;
+        boss.nextSpawn = null;
+        boss.createdBy = null;
+        boss.createdById = null;
+        boss.votes = [];
+
+        addAuditLog("AUTO_RESET_BY_VOTE", "SYSTEM", `${boss.serverName} (${boss.location})`);
+        return res.json({ success: true, message: `โหวตครบ ${VOTE_RESET_THRESHOLD} คนแล้ว! ระบบทำการ Reset ช่องนี้เรียบร้อย`, reset: true });
+    }
+
+    res.json({ success: true, message: `ลงโหวตเรียบร้อย (${boss.votes.length}/${VOTE_RESET_THRESHOLD})`, reset: false });
 });
 
 // ---------------- API ADMIN ----------------
@@ -277,7 +350,12 @@ app.post('/api/admin/data', (req, res) => {
     if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
 
     const onlineList = Array.from(activeUsers.values());
-    res.json({ success: true, onlineUsers: onlineList, bosses: bosses });
+    res.json({ 
+        success: true, 
+        onlineUsers: onlineList, 
+        bosses: bosses,
+        auditLogs: auditLogs
+    });
 });
 
 app.post('/api/admin/grant-user-room', (req, res) => {
@@ -286,10 +364,14 @@ app.post('/api/admin/grant-user-room', (req, res) => {
 
     const boss = bosses.find(b => b.id === Number(bossId));
     if (boss) {
+        if (!boss.allowedUserIds) boss.allowedUserIds = [];
+        if (!boss.allowedUsers) boss.allowedUsers = [];
+
         if (!boss.allowedUserIds.includes(targetUserId)) {
             boss.allowedUserIds.push(targetUserId);
             boss.allowedUsers.push(targetUsername || "Guest");
         }
+        addAuditLog("ADMIN_GRANT", "ADMIN", `${boss.serverName} -> ${targetUsername}`);
         return res.json({ success: true, message: `ปลดล็อกห้อง ${boss.serverName} ให้คุณ ${targetUsername} เรียบร้อยแล้ว!`, boss });
     }
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
@@ -306,6 +388,7 @@ app.post('/api/admin/revoke-user-room', (req, res) => {
             boss.allowedUserIds.splice(idx, 1);
             boss.allowedUsers.splice(idx, 1);
         }
+        addAuditLog("ADMIN_REVOKE", "ADMIN", `${boss.serverName} (User ID: ${targetUserId})`);
         return res.json({ success: true, message: `ยกเลิกสิทธิ์ใช้งานห้อง ${boss.serverName} เรียบร้อย`, boss });
     }
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
@@ -336,6 +419,7 @@ app.post('/api/admin/unlock-all', (req, res) => {
         b.allowedUserIds = [];
         b.allowedUsers = [];
     });
+    addAuditLog("ADMIN_UNLOCK_ALL", "ADMIN", "ทุกห้อง");
     res.json({ success: true, message: "ปลดล็อคห้องทั้งหมดแบบสาธารณะเรียบร้อยแล้ว!" });
 });
 
@@ -349,6 +433,7 @@ app.post('/api/admin/lock-all', (req, res) => {
         b.allowedUserIds = [];
         b.allowedUsers = [];
     });
+    addAuditLog("ADMIN_LOCK_ALL", "ADMIN", "ห้อง 011-050");
     res.json({ success: true, message: "สั่งล็อคห้องมาตรฐาน (011-050) ทั้งหมดเรียบร้อยแล้ว!" });
 });
 
@@ -358,6 +443,7 @@ app.post('/api/admin/kick-user', (req, res) => {
 
     if (activeUsers.has(targetUserId)) {
         activeUsers.delete(targetUserId);
+        addAuditLog("ADMIN_KICK", "ADMIN", `User ID: ${targetUserId}`);
         return res.json({ success: true, message: `เตะผู้ใช้ออกเรียบร้อย` });
     }
     res.status(404).json({ success: false, message: "ไม่พบผู้ใช้ในระบบ" });

@@ -19,7 +19,7 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             transition: all 0.3s ease;
         }
-        /* ช่องเมื่อมีการใช้งาน (Active / In-Use State) -> ขึ้นโทนสีเขียว */
+        /* ช่องเมื่อมีการใช้งาน (Active / In-Use State) -> โทนสีเขียวเรืองแสง */
         .card-in-use {
             background: rgba(6, 78, 59, 0.25) !important;
             border: 1px solid #10b981 !important;
@@ -191,9 +191,13 @@
 
                     if (diff > 0) {
                         inUse = true; // มีคนใช้อยู่
-                        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                        
+                        // ปรับการคำนวณวินาทีให้ลงตัวเป๊ะ 01:00:00
+                        const totalSeconds = Math.floor(diff / 1000);
+                        const hours = Math.floor(totalSeconds / 3600);
+                        const minutes = Math.floor((totalSeconds % 3600) / 60);
+                        const seconds = totalSeconds % 60;
+
                         timerDisplay = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
                         timerColor = "text-emerald-400 font-bold";
                     } else {

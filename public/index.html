@@ -37,7 +37,7 @@
 </head>
 <body class="min-h-screen relative flex flex-col justify-between" onclick="closeUserMenuOutside(event)">
 
-    <!-- ==================== Landing Page (ยังไม่ได้ Login) ==================== -->
+    <!-- Landing Page -->
     <div id="landing-page" class="hidden fixed inset-0 z-50 bg-[#121212] flex flex-col justify-between p-6 md:p-12 overflow-y-auto">
         <header class="flex justify-between items-center max-w-6xl w-full mx-auto pb-4 border-b border-[#282828]">
             <div class="flex items-center gap-2">
@@ -75,7 +75,7 @@
         </footer>
     </div>
 
-    <!-- ==================== App Main Content ==================== -->
+    <!-- App Content -->
     <div class="fixed top-4 right-4 z-40">
         <button onclick="toggleUserMenu(event)" class="bg-[#181818] hover:bg-[#222] text-slate-200 border border-[#282828] p-2.5 rounded-xl shadow-xl transition flex items-center justify-center">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -330,11 +330,13 @@
 
         async function spawnBoss(id) {
             localStorage.setItem(`my_spawn_${id}`, 'true');
-            await fetch('/api/bosses/spawn', {
+            const res = await fetch('/api/bosses/spawn', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, username: currentDiscordUser, userId: myUserId })
             });
+            const data = await res.json();
+            if (!data.success) alert(data.message);
             fetchBosses(true);
         }
 
@@ -345,7 +347,7 @@
             const res = await fetch('/api/bosses/reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, userId: myUserId })
+                body: JSON.stringify({ id, userId: myUserId, username: currentDiscordUser })
             });
             const data = await res.json();
             if (!data.success) alert(data.message);
@@ -361,6 +363,17 @@
             });
             const data = await res.json();
             if (!data.success) alert(data.message);
+            fetchBosses(true);
+        }
+
+        async function voteResetBoss(id) {
+            const res = await fetch('/api/bosses/vote-reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, userId: myUserId, username: currentDiscordUser })
+            });
+            const data = await res.json();
+            alert(data.message);
             fetchBosses(true);
         }
 
@@ -468,7 +481,6 @@
                     playedAlerts.delete(boss.id);
                 }
 
-                // ตรวจสอบเงื่อนไข Undo: ถ้ามีข้อมูล Reset ที่ไม่เกิน 3 นาที ทุกคนในทีมสามารถกด UNDO ช่วยกันได้
                 if (boss.resetAt && boss.previousNextSpawn) {
                     const resetTime = new Date(boss.resetAt).getTime();
                     const diffResetMinutes = (now - resetTime) / (1000 * 60);
@@ -484,7 +496,6 @@
                     ? "bg-[#121212] text-slate-600 border border-[#282828] cursor-not-allowed opacity-50" 
                     : "bg-[#ff6b00]/10 hover:bg-[#ff6b00] text-[#ff6b00] hover:text-black border border-[#ff6b00]/40 cursor-pointer font-bold";
 
-                // เปิดสิทธิ์ให้กด UNDO ได้ทันทีเมื่อมีการ Reset ในช่วง 3 นาที
                 const undoBtnAttr = canUndo ? `onclick="undoBoss(${boss.id})"` : "disabled";
                 const undoBtnClass = canUndo 
                     ? "bg-amber-950/40 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 cursor-pointer animate-pulse font-bold" 
@@ -498,6 +509,19 @@
                 const userBadge = inUse && boss.createdBy 
                     ? `<span class="text-[10px] border px-2 py-0.5 rounded font-bold max-w-[110px] truncate ${badgeClass}">👤 ${boss.createdBy}</span>` 
                     : '';
+
+                // ปุ่ม Vote Report บอสยังไม่ตาย
+                let voteReportButton = '';
+                if (inUse && !isOwner) {
+                    const voteCount = boss.voteCount || 0;
+                    const hasVoted = boss.hasVoted;
+                    voteReportButton = `
+                        <button onclick="voteResetBoss(${boss.id})" ${hasVoted ? 'disabled' : ''} 
+                            class="w-full mt-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded py-1 text-[10px] font-bold transition flex items-center justify-center gap-1 ${hasVoted ? 'opacity-50 cursor-not-allowed' : ''}">
+                            <span>⚠️</span> <span>${hasVoted ? 'ลงโหวตแล้ว' : 'แจ้งบอสยังไม่ตาย'} (${voteCount}/3)</span>
+                        </button>
+                    `;
+                }
 
                 card.innerHTML = `
                     <div>
@@ -513,16 +537,19 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-1.5 mt-2 border-t border-[#282828] pt-3">
-                        <button ${spawnBtnAttr} class="${spawnBtnClass} rounded-lg py-1 text-[11px] font-gaming transition">
-                            SPAWN
-                        </button>
-                        <button ${undoBtnAttr} class="${undoBtnClass} rounded-lg py-1 text-[11px] font-gaming transition">
-                            UNDO
-                        </button>
-                        <button ${resetBtnAttr} class="${resetBtnClass} rounded-lg py-1 text-[11px] font-gaming transition">
-                            RESET
-                        </button>
+                    <div>
+                        <div class="grid grid-cols-3 gap-1.5 mt-2 border-t border-[#282828] pt-3">
+                            <button ${spawnBtnAttr} class="${spawnBtnClass} rounded-lg py-1 text-[11px] font-gaming transition">
+                                SPAWN
+                            </button>
+                            <button ${undoBtnAttr} class="${undoBtnClass} rounded-lg py-1 text-[11px] font-gaming transition">
+                                UNDO
+                            </button>
+                            <button ${resetBtnAttr} class="${resetBtnClass} rounded-lg py-1 text-[11px] font-gaming transition">
+                                RESET
+                            </button>
+                        </div>
+                        ${voteReportButton}
                     </div>
                 `;
             });

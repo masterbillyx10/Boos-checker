@@ -178,7 +178,8 @@
                 let inUse = false;
                 let canUndo = false;
 
-                const now = new Date().getTime();
+                // ย้าย now มาไว้ในวนลูปเพื่อดึงเวลาจริงแบบเรียลไทม์
+                const now = Date.now();
 
                 if (boss.nextSpawn) {
                     const spawnTime = new Date(boss.nextSpawn).getTime();
@@ -187,8 +188,8 @@
                     if (diff > 0) {
                         inUse = true;
                         
-                        // ล็อคไม่ให้เกิน 3600 วินาที (1 ชั่วโมงพอดี)
-                        const totalSeconds = Math.min(3600, Math.ceil(diff / 1000));
+                        // คำนวณวินาทีรวมถอยหลังจริง
+                        const totalSeconds = Math.min(3600, Math.floor(diff / 1000));
                         
                         const hours = Math.floor(totalSeconds / 3600);
                         const minutes = Math.floor((totalSeconds % 3600) / 60);

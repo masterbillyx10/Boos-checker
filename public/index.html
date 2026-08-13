@@ -7,89 +7,38 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Prompt', sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
-        }
-        .font-gaming {
-            font-family: 'Orbitron', sans-serif;
-        }
+        body { font-family: 'Prompt', sans-serif; background-color: #121212; color: #e0e0e0; }
+        .font-gaming { font-family: 'Orbitron', sans-serif; }
 
-        /* กล่องการ์ดแนว Clean Dark */
-        .clean-card {
-            background: #181818;
-            border: 1px solid #282828;
-            transition: all 0.25s ease;
-        }
-        .clean-card:hover {
-            border-color: #ff6b00;
-        }
+        .clean-card { background: #181818; border: 1px solid #282828; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+        .clean-card:hover { border-color: #ff6b00; }
 
-        /* กรอบสีส้ม */
-        .orange-bracket {
-            position: relative;
-            border-left: 2px solid #ff6b00;
-            border-right: 2px solid #ff6b00;
-            border-radius: 8px;
-        }
+        .orange-bracket { position: relative; border-left: 2px solid #ff6b00; border-right: 2px solid #ff6b00; border-radius: 8px; }
 
-        /* สถานะการ์ดบอส */
-        .card-in-use {
-            background: #1e1e1e !important;
-            border: 1px solid #ff6b00 !important;
-            box-shadow: 0 0 15px rgba(255, 107, 0, 0.15);
-        }
-        .card-green {
-            border-color: #10b981 !important;
-        }
-        .card-yellow {
-            border-color: #f59e0b !important;
-        }
-        .card-red {
-            border-color: #ef4444 !important;
-        }
+        .card-in-use { background: #1e1e1e !important; border: 1px solid #ff6b00 !important; box-shadow: 0 0 15px rgba(255, 107, 0, 0.15); }
+        .card-green { border-color: #10b981 !important; }
+        .card-yellow { border-color: #f59e0b !important; }
+        .card-red { border-color: #ef4444 !important; }
 
         @keyframes flashRedBorder {
             0%, 100% { border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
             50% { border-color: #282828; box-shadow: none; }
         }
-        .card-flash-red {
-            animation: flashRedBorder 1s infinite;
-        }
+        .card-flash-red { animation: flashRedBorder 1s infinite; }
 
-        .active-tab-orange {
-            background: #ff6b00 !important;
-            color: #000000 !important;
-            font-weight: 700;
-        }
-        .active-city {
-            border-color: #ff6b00 !important;
-            color: #ff6b00 !important;
-            background: #1e1e1e;
-        }
+        .active-tab-orange { background: #ff6b00 !important; color: #000000 !important; font-weight: 700; }
+        .active-city { border-color: #ff6b00 !important; color: #ff6b00 !important; background: #1e1e1e; }
 
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #121212;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #282828;
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #ff6b00;
-        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #121212; }
+        ::-webkit-scrollbar-thumb { background: #282828; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #ff6b00; }
     </style>
 </head>
 <body class="min-h-screen relative flex flex-col justify-between" onclick="closeUserMenuOutside(event)">
 
-    <!-- ==================== หน้าสำหรับคนยังไม่ได้ LOGIN (Landing Page) ==================== -->
+    <!-- ==================== Landing Page (ยังไม่ได้ Login) ==================== -->
     <div id="landing-page" class="hidden fixed inset-0 z-50 bg-[#121212] flex flex-col justify-between p-6 md:p-12 overflow-y-auto">
-        <!-- Header -->
         <header class="flex justify-between items-center max-w-6xl w-full mx-auto pb-4 border-b border-[#282828]">
             <div class="flex items-center gap-2">
                 <span class="text-xl font-black font-gaming text-white tracking-widest">WARZ <span class="text-[#ff6b00]">TIMER</span></span>
@@ -99,7 +48,6 @@
             </a>
         </header>
 
-        <!-- Main Content Center -->
         <main class="text-center my-auto py-12">
             <h2 id="landing-online-count" class="text-3xl md:text-5xl font-black font-gaming text-[#ff6b00] mb-2 tracking-wider">
                 USER ONLINE ???
@@ -127,10 +75,7 @@
         </footer>
     </div>
 
-
-    <!-- ==================== หน้าสำหรับคน LOGIN แล้ว ==================== -->
-    
-    <!-- ปุ่ม Hamburger 3 ขีด -->
+    <!-- ==================== App Main Content ==================== -->
     <div class="fixed top-4 right-4 z-40">
         <button onclick="toggleUserMenu(event)" class="bg-[#181818] hover:bg-[#222] text-slate-200 border border-[#282828] p-2.5 rounded-xl shadow-xl transition flex items-center justify-center">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,7 +83,6 @@
             </svg>
         </button>
 
-        <!-- Dropdown Menu -->
         <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-64 bg-[#181818] border border-[#282828] rounded-2xl shadow-2xl p-2 z-50 backdrop-blur-md">
             <div class="p-3 border-b border-[#282828] bg-[#121212] rounded-xl mb-1">
                 <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">ผู้ใช้งานปัจจุบัน</p>
@@ -149,11 +93,9 @@
             </div>
 
             <div class="space-y-1 text-xs font-semibold">
-                <!-- เมนู Admin (แสดงเฉพาะ Admin เท่านั้น) -->
                 <a id="admin-panel-menu" href="/admin.html" class="hidden flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-[#ff6b00]/10 hover:bg-[#ff6b00] text-[#ff6b00] hover:text-black border border-[#ff6b00]/30 transition font-bold">
                     <span>⚙️</span> ศูนย์จัดการ Admin
                 </a>
-
                 <a href="https://warzth.thehof.gg/news/boss-update-11-august-2026-th" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-[#222] text-slate-300 hover:text-white transition">
                     <span>🧟‍♂️</span> รายละเอียดบอส SUPER ZOMBIE
                 </a>
@@ -170,7 +112,6 @@
         </div>
     </div>
 
-    <!-- Main App Content -->
     <div>
         <header class="text-center pt-8 pb-4">
             <h1 class="text-3xl md:text-4xl font-black font-gaming tracking-wider text-white">
@@ -187,8 +128,6 @@
         </header>
 
         <main class="max-w-6xl mx-auto px-4">
-            
-            <!-- Server Type Tab -->
             <div class="flex justify-center gap-3 mb-6">
                 <button id="tab-premium" onclick="selectServerType('Premium')" 
                     class="active-tab-orange px-6 py-2 rounded-xl text-xs font-bold font-gaming transition-all duration-200 border border-[#282828]">
@@ -200,7 +139,6 @@
                 </button>
             </div>
 
-            <!-- City Select -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                 <button onclick="selectCity('Norad Military Base')" id="city-Norad Military Base" class="active-city clean-card p-3 rounded-xl text-center transition">
                     <div class="text-lg">🏢</div>
@@ -226,13 +164,11 @@
                 </span>
             </div>
 
-            <!-- Boss Cards Grid -->
             <div id="boss-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
-
         </main>
     </div>
 
-    <!-- Modal แจ้งเตือนปลดล็อก VIP -->
+    <!-- Modal VIP -->
     <div id="vip-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-[#181818] border border-[#ff6b00]/40 rounded-2xl max-w-md w-full p-6 text-center shadow-[0_0_30px_rgba(255,107,0,0.15)]">
             <div class="text-4xl mb-3">🔒</div>
@@ -258,10 +194,8 @@
     </div>
 
     <script>
-        // รายชื่อ Admin ที่อนุญาตให้เห็นเมนู ศูนย์จัดการ Admin
         const ADMIN_USERNAMES = ["hexeditorx10", "valentile"];
 
-        // ดักจับ Query Params เมื่อ Login จาก Discord สำเร็จ
         const urlParams = new URLSearchParams(window.location.search);
         const discordId = urlParams.get('discord_id');
         const username = urlParams.get('username');
@@ -278,7 +212,6 @@
         let currentDiscordUser = localStorage.getItem('discord_username');
         let userAvatar = localStorage.getItem('discord_avatar');
 
-        // สลับหน้าระหว่าง Landing Page กับ หน้าแอพจริง
         if (currentDiscordUser) {
             document.getElementById('landing-page').classList.add('hidden');
             document.getElementById('dropdown-username').innerText = currentDiscordUser;
@@ -286,7 +219,6 @@
                 document.getElementById('user-avatar').src = `https://cdn.discordapp.com/avatars/${myUserId}/${userAvatar}.png`;
             }
 
-            // ตรวจสอบว่าเป็น Admin หรือไม่ เพื่อเปิดเมนูแอดมิน
             if (ADMIN_USERNAMES.includes(currentDiscordUser.toLowerCase())) {
                 document.getElementById('admin-panel-menu').classList.remove('hidden');
             }
@@ -344,13 +276,8 @@
             }
         }
 
-        function openVipModal() {
-            document.getElementById('vip-modal').classList.remove('hidden');
-        }
-
-        function closeVipModal() {
-            document.getElementById('vip-modal').classList.add('hidden');
-        }
+        function openVipModal() { document.getElementById('vip-modal').classList.remove('hidden'); }
+        function closeVipModal() { document.getElementById('vip-modal').classList.add('hidden'); }
 
         function selectServerType(type) {
             currentType = type;
@@ -364,7 +291,7 @@
                 btnOff.className = "active-tab-orange px-6 py-2 rounded-xl text-xs font-bold font-gaming transition-all duration-200 border border-[#282828]";
                 btnPrem.className = "px-6 py-2 rounded-xl text-xs font-bold font-gaming transition-all duration-200 border border-[#282828] text-slate-400 bg-[#181818]";
             }
-            fetchBosses();
+            fetchBosses(true);
         }
 
         function selectCity(cityName) {
@@ -377,10 +304,10 @@
                 if (c === cityName) el.classList.add('active-city');
                 else el.classList.remove('active-city');
             });
-            fetchBosses();
+            fetchBosses(true);
         }
 
-        async function fetchBosses() {
+        async function fetchBosses(forceRebuild = false) {
             const url = `/api/bosses?serverType=${currentType}&location=${encodeURIComponent(currentCity)}&userId=${myUserId || 'guest'}&username=${encodeURIComponent(currentDiscordUser || 'Guest')}`;
             try {
                 const res = await fetch(url);
@@ -395,7 +322,7 @@
                     if (landingCount) landingCount.innerText = `USER ONLINE ${data.onlineCount}`;
                 }
                 
-                if (currentDiscordUser) renderBossGrid();
+                if (currentDiscordUser) renderBossGrid(forceRebuild);
             } catch(e) {
                 console.error("Error fetching bosses:", e);
             }
@@ -403,49 +330,60 @@
 
         async function spawnBoss(id) {
             localStorage.setItem(`my_spawn_${id}`, 'true');
-
             await fetch('/api/bosses/spawn', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, username: currentDiscordUser, userId: myUserId })
             });
-            fetchBosses();
+            fetchBosses(true);
         }
 
         async function resetBoss(id) {
             localStorage.removeItem(`my_spawn_${id}`);
             playedAlerts.delete(id);
 
-            await fetch('/api/bosses/reset', {
+            const res = await fetch('/api/bosses/reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id })
+                body: JSON.stringify({ id, userId: myUserId })
             });
-            fetchBosses();
+            const data = await res.json();
+            if (!data.success) alert(data.message);
+            fetchBosses(true);
         }
 
         async function undoBoss(id) {
             localStorage.setItem(`my_spawn_${id}`, 'true');
-
             const res = await fetch('/api/bosses/undo', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, username: currentDiscordUser })
+                body: JSON.stringify({ id, username: currentDiscordUser, userId: myUserId })
             });
             const data = await res.json();
             if (!data.success) alert(data.message);
-            fetchBosses();
+            fetchBosses(true);
         }
 
-        function renderBossGrid() {
+        // ฟังก์ชันวาดการ์ดแบบประสิทธิภาพสูง (ไม่ Rebuild DOM ทิ้งทุกวินาที)
+        function renderBossGrid(forceRebuild = false) {
             const container = document.getElementById('boss-grid');
             if (bossesData.length === 0) return;
-            
-            container.innerHTML = '';
+
+            if (forceRebuild || container.children.length !== bossesData.length) {
+                container.innerHTML = '';
+                bossesData.forEach(boss => {
+                    const card = document.createElement('div');
+                    card.id = `boss-card-${boss.id}`;
+                    container.appendChild(card);
+                });
+            }
+
+            const now = Date.now() + serverTimeOffset;
 
             bossesData.forEach(boss => {
-                const card = document.createElement('div');
-                
+                const card = document.getElementById(`boss-card-${boss.id}`);
+                if (!card) return;
+
                 if (boss.isLocked) {
                     card.className = "clean-card card-locked rounded-xl p-4 flex flex-col justify-between text-center relative overflow-hidden";
                     card.innerHTML = `
@@ -468,7 +406,6 @@
                             </button>
                         </div>
                     `;
-                    container.appendChild(card);
                     return;
                 }
 
@@ -479,7 +416,10 @@
                 let cardStyleClass = "clean-card";
                 let badgeClass = "bg-[#ff6b00]/10 text-[#ff6b00] border-[#ff6b00]/30";
 
-                const now = Date.now() + serverTimeOffset;
+                // ตรวจสอบว่าเป็นเจ้าของช่องหรือไม่
+                const isOwner = boss.createdById === myUserId;
+                const isAdmin = ADMIN_USERNAMES.includes((currentDiscordUser || '').toLowerCase());
+                const canResetOrUndo = isOwner || isAdmin;
 
                 if (boss.nextSpawn) {
                     const spawnTime = new Date(boss.nextSpawn).getTime();
@@ -540,18 +480,19 @@
 
                 card.className = `${cardStyleClass} rounded-xl p-4 flex flex-col justify-between text-center relative overflow-hidden`;
 
+                // สิทธิ์ปุ่มควบคุม
                 const spawnBtnAttr = inUse ? "disabled" : `onclick="spawnBoss(${boss.id})"`;
                 const spawnBtnClass = inUse 
                     ? "bg-[#121212] text-slate-600 border border-[#282828] cursor-not-allowed opacity-50" 
                     : "bg-[#ff6b00]/10 hover:bg-[#ff6b00] text-[#ff6b00] hover:text-black border border-[#ff6b00]/40 cursor-pointer font-bold";
 
-                const undoBtnAttr = canUndo ? `onclick="undoBoss(${boss.id})"` : "disabled";
-                const undoBtnClass = canUndo 
+                const undoBtnAttr = (canUndo && canResetOrUndo) ? `onclick="undoBoss(${boss.id})"` : "disabled";
+                const undoBtnClass = (canUndo && canResetOrUndo) 
                     ? "bg-amber-950/40 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 cursor-pointer animate-pulse font-bold" 
                     : "bg-[#121212] text-slate-700 border border-[#282828] cursor-not-allowed opacity-40";
 
-                const resetBtnAttr = inUse ? `onclick="resetBoss(${boss.id})"` : "disabled";
-                const resetBtnClass = inUse 
+                const resetBtnAttr = (inUse && canResetOrUndo) ? `onclick="resetBoss(${boss.id})"` : "disabled";
+                const resetBtnClass = (inUse && canResetOrUndo) 
                     ? "bg-rose-950/40 hover:bg-rose-600/30 text-rose-400 border border-rose-500/40 cursor-pointer font-bold" 
                     : "bg-[#121212] text-slate-700 border border-[#282828] cursor-not-allowed opacity-40";
 
@@ -585,13 +526,17 @@
                         </button>
                     </div>
                 `;
-                container.appendChild(card);
             });
         }
 
-        setInterval(renderBossGrid, 1000);
-        setInterval(fetchBosses, 3000);
-        fetchBosses();
+        // วนลูปเวลานับถอยหลังฝั่ง Client อย่างลื่นไหล (1 วินาที)
+        setInterval(() => {
+            if (currentDiscordUser) renderBossGrid(false);
+        }, 1000);
+
+        // ดึงข้อมูลจาก Server ทุกๆ 3.5 วินาที ลดภาระ Network/CPU
+        setInterval(() => fetchBosses(false), 3500);
+        fetchBosses(true);
     </script>
 </body>
 </html>

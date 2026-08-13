@@ -3,7 +3,6 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ตั้งรหัสผ่านสำหรับเข้าหน้าแอดมิน
 const ADMIN_KEY = process.env.ADMIN_KEY || "VALENTILE1234";
 
 app.use(express.json());
@@ -29,17 +28,17 @@ setInterval(() => {
 let bosses = [];
 let idCounter = 1;
 
-// Official 50 (1-10 ฟรี / 11-50 ล็อค)
+// สร้างห้อง Official 001 - 050 (001-010 ฟรี / 011-050 ล็อค)
 for (let i = 1; i <= 50; i++) {
     const serverName = `Official ${String(i).padStart(3, '0')}`;
-    const isFree = i <= 10;
+    const lockedStatus = i > 10; // ห้องเกิน 10 ให้ล็อคทั้งหมด
     LOCATIONS.forEach(loc => {
         bosses.push({
             id: idCounter++,
             serverType: "Official",
             serverName: serverName,
             location: loc,
-            isLocked: !isFree,
+            isLocked: lockedStatus,
             killedAt: null,
             nextSpawn: null,
             previousNextSpawn: null,
@@ -49,17 +48,17 @@ for (let i = 1; i <= 50; i++) {
     });
 }
 
-// Premium 50 (1-10 ฟรี / 11-50 ล็อค)
+// สร้างห้อง Premium 001 - 050 (001-010 ฟรี / 011-050 ล็อค)
 for (let i = 1; i <= 50; i++) {
     const serverName = `Premium ${String(i).padStart(3, '0')}`;
-    const isFree = i <= 10;
+    const lockedStatus = i > 10; // ห้องเกิน 10 ให้ล็อคทั้งหมด
     LOCATIONS.forEach(loc => {
         bosses.push({
             id: idCounter++,
             serverType: "Premium",
             serverName: serverName,
             location: loc,
-            isLocked: !isFree,
+            isLocked: lockedStatus,
             killedAt: null,
             nextSpawn: null,
             previousNextSpawn: null,
@@ -69,7 +68,6 @@ for (let i = 1; i <= 50; i++) {
     });
 }
 
-// API ดึงข้อมูลบอส + นับจำนวนคนออนไลน์
 app.get('/api/bosses', (req, res) => {
     const { serverType, location, userId, username } = req.query;
 
@@ -156,20 +154,14 @@ app.post('/api/bosses/undo', (req, res) => {
     res.status(404).json({ success: false, message: "Boss not found" });
 });
 
-// ==================== ADMIN API (แก้ไขแล้ว) ====================
-
+// Admin APIs
 app.post('/api/admin/data', (req, res) => {
     const { adminKey } = req.body;
     if (adminKey !== ADMIN_KEY) {
         return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
     }
 
-    // แปลง Map เป็น Array อย่างถูกต้อง
-    const onlineList = [];
-    for (const [id, user] of activeUsers.entries()) {
-        onlineList.push(user);
-    }
-
+    const onlineList = Array.from(activeUsers.values());
     res.json({
         success: true,
         onlineUsers: onlineList,
@@ -186,7 +178,7 @@ app.post('/api/admin/toggle-lock', (req, res) => {
     const boss = bosses.find(b => b.id === bossId);
     if (boss) {
         boss.isLocked = isLocked;
-        return res.json({ success: true, message: `อัปเดตห้อง ${boss.serverName} (${boss.location}) เรียบร้อย` });
+        return res.json({ success: true, message: `อัปเดตสถานะห้องเรียบร้อย`, boss });
     }
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
 });
@@ -199,9 +191,9 @@ app.post('/api/admin/kick-user', (req, res) => {
 
     if (activeUsers.has(targetUserId)) {
         activeUsers.delete(targetUserId);
-        return res.json({ success: true, message: `เตะผู้ใช้ ID: ${targetUserId} ออกเรียบร้อย` });
+        return res.json({ success: true, message: `เตะผู้ใช้เรียบร้อย` });
     }
-    res.status(404).json({ success: false, message: "ไม่พบผู้ใช้นี้ในระบบ" });
+    res.status(404).json({ success: false, message: "ไม่พบผู้ใช้ในระบบ" });
 });
 
 app.listen(PORT, () => {

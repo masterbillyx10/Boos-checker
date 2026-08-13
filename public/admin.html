@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WARZ TIMER - ADMIN DASHBOARD</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Rajdhani', sans-serif; background-color: #0b0e14; }
+        body { font-family: 'Prompt', sans-serif; background-color: #0b0e14; }
         .font-gaming { font-family: 'Orbitron', sans-serif; }
         .user-card-selected {
             border-color: #f59e0b !important;
@@ -18,7 +18,7 @@
 </head>
 <body class="text-slate-200 min-h-screen p-4 md:p-8">
 
-    <div class="max-w-5xl mx-auto">
+    <div class="max-w-6xl mx-auto">
         <header class="flex justify-between items-center mb-8 pb-4 border-b border-slate-800">
             <div>
                 <h1 class="text-2xl md:text-3xl font-black font-gaming text-amber-400">⚙️ ADMIN CONTROL PANEL</h1>
@@ -40,50 +40,62 @@
             </button>
         </div>
 
-        <div id="admin-content" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl h-fit">
-                <h2 class="text-base font-bold font-gaming text-rose-400 mb-2 flex items-center justify-between">
-                    <span>🔴 ONLINE USERS</span>
-                    <span id="user-count-badge" class="bg-rose-500/20 text-rose-400 text-xs px-2 py-0.5 rounded border border-rose-500/30">0</span>
-                </h2>
-                <p class="text-[11px] text-amber-400/90 mb-4">💡 คลิกที่ชื่อผู้ใช้ด้านล่าง เพื่อเลือกคนที่จะปลดล็อกห้องให้</p>
-                <div id="online-users-list" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+        <div id="admin-content" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- ซ้าย: คนออนไลน์ -->
+                <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl h-fit">
+                    <h2 class="text-base font-bold font-gaming text-rose-400 mb-2 flex items-center justify-between">
+                        <span>🔴 ONLINE USERS</span>
+                        <span id="user-count-badge" class="bg-rose-500/20 text-rose-400 text-xs px-2 py-0.5 rounded border border-rose-500/30">0</span>
+                    </h2>
+                    <p class="text-[11px] text-amber-400/90 mb-4">💡 คลิกที่ชื่อผู้ใช้ด้านล่าง เพื่อเลือกคนที่จะปลดล็อกห้องให้</p>
+                    <div id="online-users-list" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+                </div>
+
+                <!-- ขวา: ตารางห้อง VIP -->
+                <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                    <div id="selected-user-banner" class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4 flex justify-between items-center text-xs">
+                        <span class="text-slate-300">
+                            👤 ผู้ใช้ที่เลือกอยู่: <span id="selected-username-text" class="text-amber-400 font-bold font-gaming">ยังไม่ได้เลือก (กรุณาคลิกเลือกผู้ใช้ทางซ้าย)</span>
+                        </span>
+                        <button id="clear-selected-btn" onclick="deselectUser()" class="hidden text-rose-400 hover:underline text-[11px]">ยกเลิกเลือก</button>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                        <h2 class="text-base font-bold font-gaming text-emerald-400">🔒 จัดการปลดล็อกห้อง VIP</h2>
+                        
+                        <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                            <button onclick="unlockAllRooms()" class="bg-emerald-600/20 border border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded p-1.5 text-xs font-bold transition">
+                                🔓 ปลดล็อคสาธารณะทั้งหมด
+                            </button>
+                            <button onclick="lockAllRooms()" class="bg-amber-600/20 border border-amber-500 text-amber-400 hover:bg-amber-500 hover:text-white rounded p-1.5 text-xs font-bold transition">
+                                🔒 ล็อคห้องทั้งหมด (011-050)
+                            </button>
+
+                            <select id="filter-type" onchange="filterAdminRooms()" class="bg-slate-950 border border-slate-700 rounded p-1.5 text-xs">
+                                <option value="All">ทุกเซิร์ฟเวอร์</option>
+                                <option value="Premium">Premium</option>
+                                <option value="Official">Official</option>
+                            </select>
+                            <select id="filter-city" onchange="filterAdminRooms()" class="bg-slate-950 border border-slate-700 rounded p-1.5 text-xs">
+                                <option value="Norad Military Base">Norad Military Base</option>
+                                <option value="Ridgeway Airport">Ridgeway Airport</option>
+                                <option value="Crystal Lake Resort">Crystal Lake Resort</option>
+                                <option value="Campos City">Campos City</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="rooms-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[450px] overflow-y-auto pr-2"></div>
+                </div>
             </div>
 
-            <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                <div id="selected-user-banner" class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4 flex justify-between items-center text-xs">
-                    <span class="text-slate-300">
-                        👤 ผู้ใช้ที่เลือกอยู่: <span id="selected-username-text" class="text-amber-400 font-bold font-gaming">ยังไม่ได้เลือก (กรุณาคลิกเลือกผู้ใช้ทางซ้าย)</span>
-                    </span>
-                    <button id="clear-selected-btn" onclick="deselectUser()" class="hidden text-rose-400 hover:underline text-[11px]">ยกเลิกเลือก</button>
+            <!-- กล่อง Audit Logs ประวัติการใช้งานย้อนหลัง -->
+            <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                <h2 class="text-base font-bold font-gaming text-amber-400 mb-3">📋 ประวัติการใช้งานย้อนหลัง (ACTIVITY AUDIT LOGS)</h2>
+                <div id="audit-log-container" class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-xs max-h-48 overflow-y-auto space-y-1 text-slate-400">
+                    <p class="text-center py-2 text-slate-600">ไม่มีประวัติการใช้งาน</p>
                 </div>
-
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-                    <h2 class="text-base font-bold font-gaming text-emerald-400">🔒 จัดการปลดล็อกห้อง VIP</h2>
-                    
-                    <div class="flex flex-wrap gap-2 w-full sm:w-auto">
-                        <button onclick="unlockAllRooms()" class="bg-emerald-600/20 border border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded p-1.5 text-xs font-bold transition">
-                            🔓 ปลดล็อคสาธารณะทั้งหมด
-                        </button>
-                        <button onclick="lockAllRooms()" class="bg-amber-600/20 border border-amber-500 text-amber-400 hover:bg-amber-500 hover:text-white rounded p-1.5 text-xs font-bold transition">
-                            🔒 ล็อคห้องทั้งหมด (011-050)
-                        </button>
-
-                        <select id="filter-type" onchange="filterAdminRooms()" class="bg-slate-950 border border-slate-700 rounded p-1.5 text-xs">
-                            <option value="All">ทุกเซิร์ฟเวอร์</option>
-                            <option value="Premium">Premium</option>
-                            <option value="Official">Official</option>
-                        </select>
-                        <select id="filter-city" onchange="filterAdminRooms()" class="bg-slate-950 border border-slate-700 rounded p-1.5 text-xs">
-                            <option value="Norad Military Base">Norad Military Base</option>
-                            <option value="Ridgeway Airport">Ridgeway Airport</option>
-                            <option value="Crystal Lake Resort">Crystal Lake Resort</option>
-                            <option value="Campos City">Campos City</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div id="rooms-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-2"></div>
             </div>
         </div>
     </div>
@@ -111,6 +123,7 @@
 
                 renderOnlineUsers(data.onlineUsers);
                 filterAdminRooms();
+                renderAuditLogs(data.auditLogs);
             } catch(e) {
                 alert('เกิดข้อผิดพลาดในการดึงข้อมูล');
             }
@@ -120,27 +133,35 @@
             selectedUser = user;
             document.getElementById('selected-username-text').innerText = `${user.username} (ID: ${user.id})`;
             document.getElementById('clear-selected-btn').classList.remove('hidden');
-            loadAdminData();
+            filterAdminRooms();
+            renderOnlineUsersUIOnly();
         }
 
         function deselectUser() {
             selectedUser = null;
             document.getElementById('selected-username-text').innerText = 'ยังไม่ได้เลือก (กรุณาคลิกเลือกผู้ใช้ทางซ้าย)';
             document.getElementById('clear-selected-btn').classList.add('hidden');
-            loadAdminData();
+            filterAdminRooms();
+            renderOnlineUsersUIOnly();
         }
 
+        let currentOnlineUsers = [];
         function renderOnlineUsers(users) {
+            currentOnlineUsers = users;
+            renderOnlineUsersUIOnly();
+        }
+
+        function renderOnlineUsersUIOnly() {
             const list = document.getElementById('online-users-list');
-            document.getElementById('user-count-badge').innerText = users.length;
+            document.getElementById('user-count-badge').innerText = currentOnlineUsers.length;
             list.innerHTML = '';
 
-            if (users.length === 0) {
+            if (currentOnlineUsers.length === 0) {
                 list.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">ไม่มีผู้ใช้ออนไลน์</p>`;
                 return;
             }
 
-            users.forEach(u => {
+            currentOnlineUsers.forEach(u => {
                 const item = document.createElement('div');
                 const isSelected = selectedUser && selectedUser.id === u.id;
                 item.className = `bg-slate-950 border border-slate-800 p-2.5 rounded-xl flex justify-between items-center text-xs cursor-pointer hover:border-amber-500/50 transition ${isSelected ? 'user-card-selected' : ''}`;
@@ -162,6 +183,24 @@
                     </button>
                 `;
                 list.appendChild(item);
+            });
+        }
+
+        function renderAuditLogs(logs) {
+            const container = document.getElementById('audit-log-container');
+            if (!logs || logs.length === 0) {
+                container.innerHTML = `<p class="text-center py-2 text-slate-600">ไม่มีประวัติการใช้งาน</p>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            logs.forEach(log => {
+                const row = document.createElement('div');
+                row.className = "flex justify-between border-b border-slate-900 pb-1";
+                row.innerHTML = `
+                    <span>[${log.time}] <strong class="text-amber-400">${log.username}</strong>: <span class="text-slate-300">${log.action}</span> - ${log.details}</span>
+                `;
+                container.appendChild(row);
             });
         }
 

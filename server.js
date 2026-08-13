@@ -1,9 +1,16 @@
 const express = require('express');
 const path = require('path');
+const https = require('https');
+const querystring = require('querystring');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 const ADMIN_KEY = process.env.ADMIN_KEY || "VALENTILE1234";
+
+// Discord OAuth2 Configurations
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || "";
+const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || "";
+const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || "https://boos-checker.onrender.com/api/auth/discord/callback";
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -72,13 +79,88 @@ for (let i = 1; i <= 50; i++) {
     });
 }
 
+// ---------------- DISCORD OAUTH2 ENDPOINTS ----------------
+
+// Redirect ผู้ใช้ไปที่หน้า Login ของ Discord
+app.get('/api/auth/discord/login', (req, res) => {
+    if (!DISCORD_CLIENT_ID) {
+        return res.status(500).send("ยังไม่ได้ตั้งค่า DISCORD_CLIENT_ID ใน Environment Variables");
+    }
+    const discordAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(DISCORD_REDIRECT_URI)}&response_type=code&scope=identify`;
+    res.redirect(discordAuthUrl);
+});
+
+// Callback รองรับรหัสยืนยันจาก Discord
+app.get('/api/auth/discord/callback', (req, res) => {
+    const code = req.query.code;
+    if (!code) return res.redirect('/?error=no_code');
+
+    const postData = querystring.stringify({
+        client_id: DISCORD_CLIENT_ID,
+        client_secret: DISCORD_CLIENT_SECRET,
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: DISCORD_REDIRECT_URI
+    });
+
+    const tokenReq = https.request({
+        hostname: 'discord.com',
+        path: '/api/oauth2/token',
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': Buffer.byteLength(postData)
+        }
+    }, (tokenRes) => {
+        let body = '';
+        tokenRes.on('data', chunk => body += chunk);
+        tokenRes.on('end', () => {
+            try {
+                const tokenData = JSON.parse(body);
+                if (!tokenData.access_token) return res.redirect('/?error=token_failed');
+
+                // ดึงข้อมูลโปรไฟล์ผู้ใช้ Discord
+                const userReq = https.request({
+                    hostname: 'discord.com',
+                    path: '/api/users/@me',
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
+                }, (userRes) => {
+                    let userBody = '';
+                    userRes.on('data', chunk => userBody += chunk);
+                    userRes.on('end', () => {
+                        try {
+                            const userData = JSON.parse(userBody);
+                            // ส่งกลับหน้าหลักพร้อมแนบข้อมูลผู้ใช้
+                            const queryParams = querystring.stringify({
+                                discord_id: userData.id,
+                                username: userData.username,
+                                avatar: userData.avatar
+                            });
+                            res.redirect(`/?${queryParams}`);
+                        } catch (e) {
+                            res.redirect('/?error=user_fetch_failed');
+                        }
+                    });
+                });
+                userReq.end();
+            } catch (e) {
+                res.redirect('/?error=token_parse_failed');
+            }
+        });
+    });
+
+    tokenReq.write(postData);
+    tokenReq.end();
+});
+
 // ---------------- API สำหรับหน้าเว็บหลัก ----------------
 
 app.get('/api/bosses', (req, res) => {
     const { serverType, location, userId, username } = req.query;
 
     if (userId) {
-        const finalName = (username && username !== 'null' && username !== 'undefined' && username.trim() !== '') ? username : "VALENTILE";
+        const finalName = (username && username !== 'null' && username !== 'undefined' && username.trim() !== '') ? username : "Guest";
         activeUsers.set(userId, {
             id: userId,
             username: finalName,
@@ -122,7 +204,7 @@ app.post('/api/bosses/spawn', (req, res) => {
         const now = new Date();
         boss.killedAt = now.toISOString();
         boss.nextSpawn = new Date(now.getTime() + RESPAWN_MINUTES * 60000).toISOString();
-        boss.createdBy = username || "VALENTILE";
+        boss.createdBy = username || "Guest";
         boss.previousNextSpawn = null;
         boss.resetAt = null;
         return res.json({ success: true, boss });
@@ -163,7 +245,7 @@ app.post('/api/bosses/undo', (req, res) => {
         }
 
         boss.nextSpawn = boss.previousNextSpawn;
-        boss.createdBy = username || "VALENTILE";
+        boss.createdBy = username || "Guest";
         boss.previousNextSpawn = null;
         boss.resetAt = null;
         return res.json({ success: true, boss });
@@ -181,7 +263,6 @@ app.post('/api/admin/data', (req, res) => {
     res.json({ success: true, onlineUsers: onlineList, bosses: bosses });
 });
 
-// ปลดล็อกห้องให้ผู้ใช้เฉพาะบุคคล
 app.post('/api/admin/grant-user-room', (req, res) => {
     const { adminKey, bossId, targetUserId, targetUsername } = req.body;
     if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
@@ -190,14 +271,13 @@ app.post('/api/admin/grant-user-room', (req, res) => {
     if (boss) {
         if (!boss.allowedUserIds.includes(targetUserId)) {
             boss.allowedUserIds.push(targetUserId);
-            boss.allowedUsers.push(targetUsername || "VALENTILE");
+            boss.allowedUsers.push(targetUsername || "Guest");
         }
         return res.json({ success: true, message: `ปลดล็อกห้อง ${boss.serverName} ให้คุณ ${targetUsername} เรียบร้อยแล้ว!`, boss });
     }
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
 });
 
-// ยกเลิกสิทธิ์ห้องของผู้ใช้รายบุคคล
 app.post('/api/admin/revoke-user-room', (req, res) => {
     const { adminKey, bossId, targetUserId } = req.body;
     if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
@@ -214,7 +294,6 @@ app.post('/api/admin/revoke-user-room', (req, res) => {
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
 });
 
-// สลับสถานะการล็อคแบบ Global (สั่งล็อคหรือปลดล็อคเดี่ยว)
 app.post('/api/admin/toggle-global-lock', (req, res) => {
     const { adminKey, bossId, isLocked } = req.body;
     if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
@@ -231,7 +310,6 @@ app.post('/api/admin/toggle-global-lock', (req, res) => {
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
 });
 
-// ปลดล็อกห้องทั้งหมดแบบสาธารณะ
 app.post('/api/admin/unlock-all', (req, res) => {
     const { adminKey } = req.body;
     if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
@@ -244,15 +322,13 @@ app.post('/api/admin/unlock-all', (req, res) => {
     res.json({ success: true, message: "ปลดล็อคห้องทั้งหมดแบบสาธารณะเรียบร้อยแล้ว!" });
 });
 
-// ล็อคห้องทั้งหมดแบบสาธารณะ (ย้อนกลับสู่ค่าเริ่มต้น 11-50 ล็อค)
 app.post('/api/admin/lock-all', (req, res) => {
     const { adminKey } = req.body;
     if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
 
     bosses.forEach(b => {
-        // ดึงเลขห้องออกจากชื่อ serverName
         const roomNum = parseInt(b.serverName.split(' ')[1]);
-        b.isLocked = roomNum > 10; // ห้อง 011 ขึ้นไปให้ล็อคทั้งหมด
+        b.isLocked = roomNum > 10;
         b.allowedUserIds = [];
         b.allowedUsers = [];
     });

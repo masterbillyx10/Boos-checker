@@ -22,16 +22,15 @@ const LOCATIONS = [
 ];
 
 const RESPAWN_MINUTES = 60;
-const MAX_ACTIVE_SPAWNS_PER_USER = 5; // จำกัดการกด SPAWN ค้างไว้ไม่เกิน 5 ห้อง
-const VOTE_RESET_THRESHOLD = 3; // จำนวนโหวตเพื่อ Reset ห้อง
+const MAX_ACTIVE_SPAWNS_PER_USER = 7;
 
 let activeUsers = new Map();
-let auditLogs = []; // ประวัติการใช้งานสำหรับแอดมิน
+let auditLogs = [];
 
 function addAuditLog(action, username, details) {
     const time = new Date().toLocaleTimeString('th-TH');
     auditLogs.unshift({ time, action, username, details });
-    if (auditLogs.length > 50) auditLogs.pop(); // เก็บย้อนหลัง 50 รายการ
+    if (auditLogs.length > 50) auditLogs.pop();
 }
 
 setInterval(() => {
@@ -64,8 +63,7 @@ for (let i = 1; i <= 50; i++) {
             previousCreatedById: null,
             resetAt: null,
             createdBy: null,
-            createdById: null,
-            votes: [] // รายชื่อ User ID ที่กดโหวตแจ้งบอสยังไม่ตาย
+            createdById: null
         });
     });
 }
@@ -90,8 +88,7 @@ for (let i = 1; i <= 50; i++) {
             previousCreatedById: null,
             resetAt: null,
             createdBy: null,
-            createdById: null,
-            votes: []
+            createdById: null
         });
     });
 }
@@ -188,9 +185,7 @@ app.get('/api/bosses', (req, res) => {
         const isLockedForThisUser = b.isLocked && !isUserAllowed;
         return {
             ...b,
-            isLocked: isLockedForThisUser,
-            voteCount: b.votes ? b.votes.length : 0,
-            hasVoted: userId && b.votes ? b.votes.includes(userId) : false
+            isLocked: isLockedForThisUser
         };
     });
 
@@ -214,22 +209,20 @@ app.post('/api/bosses/spawn', (req, res) => {
             return res.status(400).json({ success: false, message: "ช่องนี้กำลังใช้งานอยู่" });
         }
 
-        // ตรวจสอบจำนวน SPAWN ค้างไว้ของผู้ใช้
-        const userActiveSpawns = bosses.filter(b => b.createdById === userId && b.nextSpawn && new Date(b.nextSpawn) > new Date());
+        const nowTime = new Date();
+        const userActiveSpawns = bosses.filter(b => b.createdById === userId && b.nextSpawn && new Date(b.nextSpawn) > nowTime);
         if (userActiveSpawns.length >= MAX_ACTIVE_SPAWNS_PER_USER) {
             return res.status(400).json({ success: false, message: `คุณกด SPAWN ค้างไว้เกิน ${MAX_ACTIVE_SPAWNS_PER_USER} ห้องแล้ว! กรุณารอบอสเกิดหรือกด RESET ห้องเดิมก่อน` });
         }
 
-        const now = new Date();
-        boss.killedAt = now.toISOString();
-        boss.nextSpawn = new Date(now.getTime() + RESPAWN_MINUTES * 60000).toISOString();
+        boss.killedAt = nowTime.toISOString();
+        boss.nextSpawn = new Date(nowTime.getTime() + RESPAWN_MINUTES * 60000).toISOString();
         boss.createdBy = username || "Guest";
         boss.createdById = userId || null;
         boss.previousNextSpawn = null;
         boss.previousCreatedBy = null;
         boss.previousCreatedById = null;
         boss.resetAt = null;
-        boss.votes = [];
 
         addAuditLog("SPAWN", username || "Guest", `${boss.serverName} (${boss.location})`);
         return res.json({ success: true, boss });
@@ -242,7 +235,11 @@ app.post('/api/bosses/reset', (req, res) => {
     const boss = bosses.find(b => b.id === Number(id));
     
     if (boss) {
-        if (boss.createdById && boss.createdById !== userId) {
+        const ADMIN_USERNAMES = ["hexeditorx10", "valentile"];
+        const isAdmin = username && ADMIN_USERNAMES.includes(username.toLowerCase());
+
+        // คนอื่นห้ามยุ่งเด็ดขาด
+        if (!isAdmin && boss.createdById && boss.createdById !== userId) {
             return res.status(403).json({ success: false, message: "คุณไม่ใช่เจ้าของช่องนี้ ไม่สามารถกด RESET ได้" });
         }
 
@@ -256,7 +253,6 @@ app.post('/api/bosses/reset', (req, res) => {
         boss.nextSpawn = null;
         boss.createdBy = null;
         boss.createdById = null;
-        boss.votes = [];
 
         addAuditLog("RESET", username || "Guest", `${boss.serverName} (${boss.location})`);
         return res.json({ success: true, boss });
@@ -269,6 +265,14 @@ app.post('/api/bosses/undo', (req, res) => {
     const boss = bosses.find(b => b.id === Number(id));
     
     if (boss) {
+        const ADMIN_USERNAMES = ["hexeditorx10", "valentile"];
+        const isAdmin = username && ADMIN_USERNAMES.includes(username.toLowerCase());
+
+        // คนอื่นห้ามกด Undo ช่องคนอื่น
+        if (!isAdmin && boss.previousCreatedById && boss.previousCreatedById !== userId) {
+            return res.status(403).json({ success: false, message: "คุณไม่ใช่เจ้าของช่องนี้ ไม่สามารถกด UNDO ได้" });
+        }
+
         if (!boss.previousNextSpawn || !boss.resetAt) {
             return res.status(400).json({ success: false, message: "ไม่มีข้อมูลสำหรับ Undo" });
         }
@@ -289,58 +293,11 @@ app.post('/api/bosses/undo', (req, res) => {
         boss.previousCreatedBy = null;
         boss.previousCreatedById = null;
         boss.resetAt = null;
-        boss.votes = [];
 
         addAuditLog("UNDO", username || "Guest", `${boss.serverName} (${boss.location})`);
         return res.json({ success: true, boss });
     }
     res.status(404).json({ success: false, message: "Boss not found" });
-});
-
-// API สำหรับระบบโหวตรายงานบอสยังไม่ตาย (Vote Reset)
-app.post('/api/bosses/vote-reset', (req, res) => {
-    const { id, userId, username } = req.body;
-    const boss = bosses.find(b => b.id === Number(id));
-
-    if (!boss || !boss.nextSpawn || new Date(boss.nextSpawn) <= new Date()) {
-        return res.status(400).json({ success: false, message: "ช่องนี้ไม่ได้กำลังนับถอยหลัง" });
-    }
-
-    if (!userId) {
-        return res.status(401).json({ success: false, message: "กรุณาเข้าสู่ระบบก่อนลงโหวต" });
-    }
-
-    if (boss.createdById === userId) {
-        return res.status(400).json({ success: false, message: "คุณเป็นเจ้าของช่อง สามารถกด RESET ได้โดยตรง" });
-    }
-
-    if (!boss.votes) boss.votes = [];
-
-    if (boss.votes.includes(userId)) {
-        return res.status(400).json({ success: false, message: "คุณได้ลงโหวตช่องนี้ไปแล้ว" });
-    }
-
-    boss.votes.push(userId);
-    addAuditLog("VOTE_REPORT", username || "Guest", `${boss.serverName} (${boss.location}) [${boss.votes.length}/${VOTE_RESET_THRESHOLD}]`);
-
-    // หากโหวตครบ 3 คน -> สั่ง Reset ทันที
-    if (boss.votes.length >= VOTE_RESET_THRESHOLD) {
-        boss.previousNextSpawn = boss.nextSpawn;
-        boss.previousCreatedBy = boss.createdBy;
-        boss.previousCreatedById = boss.createdById;
-        boss.resetAt = new Date().toISOString();
-
-        boss.killedAt = null;
-        boss.nextSpawn = null;
-        boss.createdBy = null;
-        boss.createdById = null;
-        boss.votes = [];
-
-        addAuditLog("AUTO_RESET_BY_VOTE", "SYSTEM", `${boss.serverName} (${boss.location})`);
-        return res.json({ success: true, message: `โหวตครบ ${VOTE_RESET_THRESHOLD} คนแล้ว! ระบบทำการ Reset ช่องนี้เรียบร้อย`, reset: true });
-    }
-
-    res.json({ success: true, message: `ลงโหวตเรียบร้อย (${boss.votes.length}/${VOTE_RESET_THRESHOLD})`, reset: false });
 });
 
 // ---------------- API ADMIN ----------------

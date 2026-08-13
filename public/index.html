@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
@@ -81,7 +81,44 @@
         }
     </style>
 </head>
-<body class="text-slate-200 min-h-screen pb-12 relative">
+<body class="text-slate-200 min-h-screen pb-12 relative" onclick="closeUserMenuOutside(event)">
+
+    <!-- ปุ่ม Hamburger 3 ขีด ที่มุมบนขวามือ -->
+    <div class="fixed top-4 right-4 z-40">
+        <button onclick="toggleUserMenu(event)" class="bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 p-2.5 rounded-xl shadow-lg transition flex items-center justify-center">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+        </button>
+
+        <!-- Dropdown Menu -->
+        <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl p-2 z-50 backdrop-blur-md">
+            <!-- แสดงชื่อผู้ใช้ตัวเอง -->
+            <div class="p-3 border-b border-slate-800 bg-slate-950/60 rounded-xl mb-1">
+                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">ผู้ใช้งานปัจจุบัน</p>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="text-base">👤</span>
+                    <span id="dropdown-username" class="text-sm font-bold font-gaming text-emerald-400 truncate">VALENTILE</span>
+                </div>
+            </div>
+
+            <!-- รายการเมนูและลิงก์ -->
+            <div class="space-y-1 text-xs font-semibold">
+                <a href="https://warzth.thehof.gg/news/boss-update-11-august-2026-th" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition">
+                    <span>🧟‍♂️</span> รายละเอียดบอส SUPER ZOMBIE
+                </a>
+                <a href="https://warzth.thehof.gg/news/Boss-Zombie-System-th" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition">
+                    <span>📍</span> จุดเกิดบอส
+                </a>
+                <a href="https://discord.gg/XgwRMhg7hB" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-slate-800 text-amber-400 hover:text-amber-300 transition">
+                    <span>💬</span> ติดต่อแอดมิน (Discord)
+                </a>
+                <button onclick="logoutUser()" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-rose-950/40 text-rose-400 hover:text-rose-300 transition text-left mt-1 border-t border-slate-800/80 pt-2">
+                    <span>🚪</span> ออกจากระบบ
+                </button>
+            </div>
+        </div>
+    </div>
 
     <header class="text-center pt-8 pb-4">
         <h1 class="text-3xl md:text-4xl font-black font-gaming tracking-wider text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.4)]">
@@ -172,6 +209,27 @@
         }
 
         let currentDiscordUser = localStorage.getItem('discord_username') || "VALENTILE";
+        document.getElementById('dropdown-username').innerText = currentDiscordUser;
+
+        function toggleUserMenu(e) {
+            e.stopPropagation();
+            const menu = document.getElementById('user-dropdown-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        function closeUserMenuOutside(e) {
+            const menu = document.getElementById('user-dropdown-menu');
+            if (!menu.classList.contains('hidden')) {
+                menu.classList.add('hidden');
+            }
+        }
+
+        function logoutUser() {
+            if (confirm('คุณต้องการออกจากระบบหรือไม่?')) {
+                localStorage.removeItem('discord_username');
+                location.reload();
+            }
+        }
 
         let currentType = 'Premium';
         let currentCity = 'Norad Military Base';

@@ -321,6 +321,11 @@
                     const landingCount = document.getElementById('landing-online-count');
                     if (landingCount) landingCount.innerText = `USER ONLINE ${data.onlineCount}`;
                 }
+
+                // ปรับแต่งชื่อในโปรไฟล์ถ้าเป็น VIP
+                if (data.isVip && currentDiscordUser) {
+                    document.getElementById('dropdown-username').innerHTML = `<span class="text-amber-400 font-bold drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">👑 [VIP] ${currentDiscordUser}</span>`;
+                }
                 
                 if (currentDiscordUser) renderBossGrid(forceRebuild);
             } catch(e) {
@@ -498,9 +503,15 @@
                     ? "bg-rose-950/40 hover:bg-rose-600/30 text-rose-400 border border-rose-500/40 cursor-pointer font-bold" 
                     : "bg-[#121212] text-slate-700 border border-[#282828] cursor-not-allowed opacity-40";
 
-                const userBadge = inUse && boss.createdBy 
-                    ? `<span class="text-[10px] border px-2 py-0.5 rounded font-bold max-w-[110px] truncate ${badgeClass}">👤 ${boss.createdBy}</span>` 
-                    : '';
+                // ป้ายชื่อคนจับเวลา (ถ้าเป็น VIP จะใส่กรอบทอง [VIP])
+                let userBadge = '';
+                if (inUse && boss.createdBy) {
+                    if (boss.isCreatorVip) {
+                        userBadge = `<span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded font-bold max-w-[130px] truncate shadow-[0_0_10px_rgba(245,158,11,0.2)]">👑 [VIP] ${boss.createdBy}</span>`;
+                    } else {
+                        userBadge = `<span class="text-[10px] border px-2 py-0.5 rounded font-bold max-w-[110px] truncate ${badgeClass}">👤 ${boss.createdBy}</span>`;
+                    }
+                }
 
                 card.innerHTML = `
                     <div>

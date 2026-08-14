@@ -48,7 +48,7 @@
                         <span>👥 ALL SYSTEM USERS</span>
                         <span id="user-count-badge" class="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded border border-amber-500/30">0</span>
                     </h2>
-                    <p class="text-[11px] text-slate-400 mb-4">🟢 จุดเขียว = ออนไลน์ | 🔴 จุดแดง = ออฟไลน์ (คลิกที่ชื่อเพื่อเลือกปลดล็อกห้องให้ได้เลย)</p>
+                    <p class="text-[11px] text-slate-400 mb-4">🟢 จุดเขียว = ออนไลน์ | 🔴 จุดแดง = ออฟไลน์ | 👑 = สมาชิก VIP</p>
                     <div id="online-users-list" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
                 </div>
 
@@ -131,7 +131,8 @@
 
         function selectUser(user) {
             selectedUser = user;
-            document.getElementById('selected-username-text').innerText = `${user.username} (ID: ${user.id})`;
+            const vipPrefix = user.isVip ? '👑 [VIP] ' : '';
+            document.getElementById('selected-username-text').innerText = `${vipPrefix}${user.username} (ID: ${user.id})`;
             document.getElementById('clear-selected-btn').classList.remove('hidden');
             filterAdminRooms();
             renderOnlineUsersUIOnly();
@@ -165,7 +166,6 @@
                 const item = document.createElement('div');
                 const isSelected = selectedUser && selectedUser.id === u.id;
                 
-                // สัญลักษณ์จุด สีเขียว (ออนไลน์) / สีแดง (ออฟไลน์)
                 const statusDot = u.isOnline 
                     ? `<span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] mr-1.5" title="ออนไลน์"></span>`
                     : `<span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] mr-1.5" title="ออฟไลน์"></span>`;
@@ -173,6 +173,10 @@
                 const kickBtn = u.isOnline 
                     ? `<button onclick="kickUser('${u.id}')" class="bg-rose-950/80 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 px-2 py-1 rounded font-bold font-gaming transition">เตะออก</button>`
                     : `<span class="text-[10px] text-slate-600 font-mono">OFFLINE</span>`;
+
+                const vipTag = u.isVip 
+                    ? `<span class="text-amber-400 font-bold drop-shadow-[0_0_6px_rgba(245,158,11,0.5)]">👑 [VIP] ${u.username}</span>` 
+                    : `<span>👤 ${u.username}</span>`;
 
                 item.className = `bg-slate-950 border border-slate-800 p-2.5 rounded-xl flex justify-between items-center text-xs cursor-pointer hover:border-amber-500/50 transition ${isSelected ? 'user-card-selected' : ''}`;
                 
@@ -186,7 +190,7 @@
                         ${statusDot}
                         <div>
                             <div class="font-bold ${isSelected ? 'text-amber-400' : 'text-slate-200'}">
-                                ${isSelected ? '👉 ' : ''}👤 ${u.username}
+                                ${isSelected ? '👉 ' : ''}${vipTag}
                             </div>
                             <div class="text-[10px] text-slate-500 font-mono">ID: ${u.id}</div>
                         </div>
@@ -232,7 +236,7 @@
                 item.className = `p-3 rounded-xl border flex flex-col justify-between text-xs ${isLocked && !isSelectedUserAllowed ? 'bg-slate-950/80 border-slate-800' : 'bg-emerald-950/30 border-emerald-500/30'}`;
                 
                 const vipUsersText = boss.allowedUsers && boss.allowedUsers.length > 0 
-                    ? `<div class="text-[10px] text-amber-400 mt-1 font-mono">👑 สิทธิ์ VIP: ${boss.allowedUsers.join(', ')}</div>` 
+                    ? `<div class="text-[10px] text-amber-400 mt-1 font-mono">👑 สิทธิ์ VIP: ${boss.allowedUsers.map(u => `[VIP] ${u}`).join(', ')}</div>` 
                     : '';
 
                 let actionButton = '';

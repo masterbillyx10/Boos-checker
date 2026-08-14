@@ -23,9 +23,10 @@ const LOCATIONS = [
 
 const RESPAWN_MINUTES = 60;
 const MAX_ACTIVE_SPAWNS_PER_USER = 7;
+const ADMIN_USERNAMES = ["hexeditorx10", "valentile"];
 
 let activeUsers = new Map();
-let registeredUsers = new Map(); // บันทึกรายชื่อผู้ใช้ทั้งหมดที่เคยล็อกอิน
+let registeredUsers = new Map();
 let auditLogs = [];
 
 function addAuditLog(action, username, details) {
@@ -92,6 +93,12 @@ for (let i = 1; i <= 50; i++) {
             createdById: null
         });
     });
+}
+
+function isUserVip(userId, username) {
+    if (username && ADMIN_USERNAMES.includes(username.toLowerCase())) return true;
+    if (!userId) return false;
+    return bosses.some(b => b.allowedUserIds && b.allowedUserIds.includes(userId));
 }
 
 // ---------------- DISCORD OAUTH2 ----------------
@@ -178,25 +185,31 @@ app.get('/api/bosses', (req, res) => {
         };
 
         activeUsers.set(userId, userInfo);
-        registeredUsers.set(userId, userInfo); // บันทึกลงรายชื่อรวม
+        registeredUsers.set(userId, userInfo);
     }
 
     let filtered = bosses;
     if (serverType) filtered = filtered.filter(b => b.serverType === serverType);
     if (location) filtered = filtered.filter(b => b.location === location);
 
+    const isCurrentUserVip = isUserVip(userId, username);
+
     const customizedBosses = filtered.map(b => {
         const isUserAllowed = userId && b.allowedUserIds && b.allowedUserIds.includes(userId);
         const isLockedForThisUser = b.isLocked && !isUserAllowed;
+        const isCreatorVip = isUserVip(b.createdById, b.createdBy);
+
         return {
             ...b,
-            isLocked: isLockedForThisUser
+            isLocked: isLockedForThisUser,
+            isCreatorVip: isCreatorVip
         };
     });
 
     res.json({
         serverTime: Date.now(),
         onlineCount: activeUsers.size || 1,
+        isVip: isCurrentUserVip,
         bosses: customizedBosses
     });
 });
@@ -240,7 +253,6 @@ app.post('/api/bosses/reset', (req, res) => {
     const boss = bosses.find(b => b.id === Number(id));
     
     if (boss) {
-        const ADMIN_USERNAMES = ["hexeditorx10", "valentile"];
         const isAdmin = username && ADMIN_USERNAMES.includes(username.toLowerCase());
 
         if (!isAdmin && boss.createdById && boss.createdById !== userId) {
@@ -269,7 +281,6 @@ app.post('/api/bosses/undo', (req, res) => {
     const boss = bosses.find(b => b.id === Number(id));
     
     if (boss) {
-        const ADMIN_USERNAMES = ["hexeditorx10", "valentile"];
         const isAdmin = username && ADMIN_USERNAMES.includes(username.toLowerCase());
 
         if (!isAdmin && boss.previousCreatedById && boss.previousCreatedById !== userId) {
@@ -309,11 +320,11 @@ app.post('/api/admin/data', (req, res) => {
     const { adminKey } = req.body;
     if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
 
-    // รวบรวมรายชื่อผู้ใช้ทั้งหมด พร้อมระบุสถานะออนไลน์ (true/false)
     const allUsersList = Array.from(registeredUsers.values()).map(user => {
         return {
             ...user,
-            isOnline: activeUsers.has(user.id)
+            isOnline: activeUsers.has(user.id),
+            isVip: isUserVip(user.id, user.username)
         };
     });
 
@@ -338,7 +349,7 @@ app.post('/api/admin/grant-user-room', (req, res) => {
             boss.allowedUserIds.push(targetUserId);
             boss.allowedUsers.push(targetUsername || "Guest");
         }
-        addAuditLog("ADMIN_GRANT", "ADMIN", `${boss.serverName} -> ${targetUsername}`);
+        addAuditLog("ADMIN_GRANT", "ADMIN", `${boss.serverName} -> [VIP] ${targetUsername}`);
         return res.json({ success: true, message: `ปลดล็อกห้อง ${boss.serverName} ให้คุณ ${targetUsername} เรียบร้อยแล้ว!`, boss });
     }
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });

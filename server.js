@@ -5,8 +5,6 @@ const querystring = require('querystring');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const ADMIN_KEY = process.env.ADMIN_KEY || "VALENTILE1234";
-
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || "";
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || "";
 const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || "https://boos-checker.onrender.com/api/auth/discord/callback";
@@ -314,11 +312,13 @@ app.post('/api/bosses/undo', (req, res) => {
     res.status(404).json({ success: false, message: "Boss not found" });
 });
 
-// ---------------- API ADMIN ----------------
+// ---------------- API ADMIN (ตรวจสอบผ่าน Admin Username อัตโนมัติ) ----------------
 
 app.post('/api/admin/data', (req, res) => {
-    const { adminKey } = req.body;
-    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+    const { adminUsername } = req.body;
+    if (!adminUsername || !ADMIN_USERNAMES.includes(adminUsername.toLowerCase())) {
+        return res.status(401).json({ success: false, message: "คุณไม่มีสิทธิ์เข้าถึงหน้า Admin" });
+    }
 
     const allUsersList = Array.from(registeredUsers.values()).map(user => {
         return {
@@ -337,8 +337,10 @@ app.post('/api/admin/data', (req, res) => {
 });
 
 app.post('/api/admin/grant-user-room', (req, res) => {
-    const { adminKey, bossId, targetUserId, targetUsername } = req.body;
-    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+    const { adminUsername, bossId, targetUserId, targetUsername } = req.body;
+    if (!adminUsername || !ADMIN_USERNAMES.includes(adminUsername.toLowerCase())) {
+        return res.status(401).json({ success: false, message: "คุณไม่มีสิทธิ์ใช้งาน" });
+    }
 
     const boss = bosses.find(b => b.id === Number(bossId));
     if (boss) {
@@ -349,15 +351,17 @@ app.post('/api/admin/grant-user-room', (req, res) => {
             boss.allowedUserIds.push(targetUserId);
             boss.allowedUsers.push(targetUsername || "Guest");
         }
-        addAuditLog("ADMIN_GRANT", "ADMIN", `${boss.serverName} -> [VIP] ${targetUsername}`);
+        addAuditLog("ADMIN_GRANT", adminUsername, `${boss.serverName} -> [VIP] ${targetUsername}`);
         return res.json({ success: true, message: `ปลดล็อกห้อง ${boss.serverName} ให้คุณ ${targetUsername} เรียบร้อยแล้ว!`, boss });
     }
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
 });
 
 app.post('/api/admin/revoke-user-room', (req, res) => {
-    const { adminKey, bossId, targetUserId } = req.body;
-    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+    const { adminUsername, bossId, targetUserId } = req.body;
+    if (!adminUsername || !ADMIN_USERNAMES.includes(adminUsername.toLowerCase())) {
+        return res.status(401).json({ success: false, message: "คุณไม่มีสิทธิ์ใช้งาน" });
+    }
 
     const boss = bosses.find(b => b.id === Number(bossId));
     if (boss) {
@@ -366,15 +370,17 @@ app.post('/api/admin/revoke-user-room', (req, res) => {
             boss.allowedUserIds.splice(idx, 1);
             boss.allowedUsers.splice(idx, 1);
         }
-        addAuditLog("ADMIN_REVOKE", "ADMIN", `${boss.serverName} (User ID: ${targetUserId})`);
+        addAuditLog("ADMIN_REVOKE", adminUsername, `${boss.serverName} (User ID: ${targetUserId})`);
         return res.json({ success: true, message: `ยกเลิกสิทธิ์ใช้งานห้อง ${boss.serverName} เรียบร้อย`, boss });
     }
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
 });
 
 app.post('/api/admin/toggle-global-lock', (req, res) => {
-    const { adminKey, bossId, isLocked } = req.body;
-    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+    const { adminUsername, bossId, isLocked } = req.body;
+    if (!adminUsername || !ADMIN_USERNAMES.includes(adminUsername.toLowerCase())) {
+        return res.status(401).json({ success: false, message: "คุณไม่มีสิทธิ์ใช้งาน" });
+    }
 
     const boss = bosses.find(b => b.id === Number(bossId));
     if (boss) {
@@ -389,21 +395,25 @@ app.post('/api/admin/toggle-global-lock', (req, res) => {
 });
 
 app.post('/api/admin/unlock-all', (req, res) => {
-    const { adminKey } = req.body;
-    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+    const { adminUsername } = req.body;
+    if (!adminUsername || !ADMIN_USERNAMES.includes(adminUsername.toLowerCase())) {
+        return res.status(401).json({ success: false, message: "คุณไม่มีสิทธิ์ใช้งาน" });
+    }
 
     bosses.forEach(b => {
         b.isLocked = false;
         b.allowedUserIds = [];
         b.allowedUsers = [];
     });
-    addAuditLog("ADMIN_UNLOCK_ALL", "ADMIN", "ทุกห้อง");
+    addAuditLog("ADMIN_UNLOCK_ALL", adminUsername, "ทุกห้อง");
     res.json({ success: true, message: "ปลดล็อคห้องทั้งหมดแบบสาธารณะเรียบร้อยแล้ว!" });
 });
 
 app.post('/api/admin/lock-all', (req, res) => {
-    const { adminKey } = req.body;
-    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+    const { adminUsername } = req.body;
+    if (!adminUsername || !ADMIN_USERNAMES.includes(adminUsername.toLowerCase())) {
+        return res.status(401).json({ success: false, message: "คุณไม่มีสิทธิ์ใช้งาน" });
+    }
 
     bosses.forEach(b => {
         const roomNum = parseInt(b.serverName.split(' ')[1]);
@@ -411,17 +421,19 @@ app.post('/api/admin/lock-all', (req, res) => {
         b.allowedUserIds = [];
         b.allowedUsers = [];
     });
-    addAuditLog("ADMIN_LOCK_ALL", "ADMIN", "ห้อง 011-050");
+    addAuditLog("ADMIN_LOCK_ALL", adminUsername, "ห้อง 011-050");
     res.json({ success: true, message: "สั่งล็อคห้องมาตรฐาน (011-050) ทั้งหมดเรียบร้อยแล้ว!" });
 });
 
 app.post('/api/admin/kick-user', (req, res) => {
-    const { adminKey, targetUserId } = req.body;
-    if (adminKey !== ADMIN_KEY) return res.status(401).json({ success: false, message: "รหัสผ่านแอดมินไม่ถูกต้อง" });
+    const { adminUsername, targetUserId } = req.body;
+    if (!adminUsername || !ADMIN_USERNAMES.includes(adminUsername.toLowerCase())) {
+        return res.status(401).json({ success: false, message: "คุณไม่มีสิทธิ์ใช้งาน" });
+    }
 
     if (activeUsers.has(targetUserId)) {
         activeUsers.delete(targetUserId);
-        addAuditLog("ADMIN_KICK", "ADMIN", `User ID: ${targetUserId}`);
+        addAuditLog("ADMIN_KICK", adminUsername, `User ID: ${targetUserId}`);
         return res.json({ success: true, message: `เตะผู้ใช้ออกเรียบร้อย` });
     }
     res.status(404).json({ success: false, message: "ไม่พบผู้ใช้ในระบบออนไลน์" });

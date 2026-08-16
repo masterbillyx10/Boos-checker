@@ -22,11 +22,11 @@
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-slate-800">
             <div>
                 <h1 class="text-2xl md:text-3xl font-black font-gaming text-amber-400">⚙️ ADMIN CONTROL PANEL</h1>
-                <p class="text-xs text-slate-500 mt-1">ระบบจัดการปลดล็อกห้อง VIP เฉพาะบุคคล และจัดการผู้ใช้งาน</p>
+                <p class="text-xs text-slate-500 mt-1">ระบบจัดการปลดล็อกห้อง VIP เฉพาะบุคคล และจัดการสิทธิ์ผู้ใช้งาน</p>
             </div>
             <div class="flex items-center gap-3">
-                <span id="admin-badge" class="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs px-3 py-1.5 rounded-lg font-bold font-gaming">
-                    👑 ADMIN: Checking...
+                <span id="admin-badge" class="bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs px-3 py-1.5 rounded-lg font-bold font-gaming">
+                    🛡️ ADMIN: Checking...
                 </span>
                 <a href="/" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-lg font-bold transition">
                     ← กลับหน้าหลัก
@@ -48,7 +48,7 @@
                         <span>👥 ALL SYSTEM USERS</span>
                         <span id="user-count-badge" class="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded border border-amber-500/30">0</span>
                     </h2>
-                    <p class="text-[11px] text-slate-400 mb-4">🟢 จุดเขียว = ออนไลน์ | 🔴 จุดแดง = ออฟไลน์ (คลิกชื่อเพื่อปลดล็อกห้องให้ได้เลย)</p>
+                    <p class="text-[11px] text-slate-400 mb-4">🟢 จุดเขียว = ออนไลน์ | 🔴 จุดแดง = ออฟไลน์ (คลิกชื่อเพื่อเลือกปลดล็อกห้อง)</p>
                     <div id="online-users-list" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
                 </div>
 
@@ -66,22 +66,15 @@
                         
                         <div class="flex flex-wrap gap-2 w-full sm:w-auto">
                             <button onclick="unlockAllRooms()" class="bg-emerald-600/20 border border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded p-1.5 text-xs font-bold transition">
-                                🔓 ปลดล็อคสาธารณะทั้งหมด
+                                🔓 ปลดล็อคฟรีทั้งหมด
                             </button>
                             <button onclick="lockAllRooms()" class="bg-amber-600/20 border border-amber-500 text-amber-400 hover:bg-amber-500 hover:text-white rounded p-1.5 text-xs font-bold transition">
-                                🔒 ล็อคห้องทั้งหมด (011-050)
+                                🔒 ล็อคห้องมาตรฐาน (006-050)
                             </button>
 
                             <select id="filter-type" onchange="filterAdminRooms()" class="bg-slate-950 border border-slate-700 rounded p-1.5 text-xs">
-                                <option value="All">ทุกเซิร์ฟเวอร์</option>
-                                <option value="Premium">Premium</option>
-                                <option value="Official">Official</option>
-                            </select>
-                            <select id="filter-city" onchange="filterAdminRooms()" class="bg-slate-950 border border-slate-700 rounded p-1.5 text-xs">
-                                <option value="Norad Military Base">Norad Military Base</option>
-                                <option value="Ridgeway Airport">Ridgeway Airport</option>
-                                <option value="Crystal Lake Resort">Crystal Lake Resort</option>
-                                <option value="Campos City">Campos City</option>
+                                <option value="Premium">Premium Server</option>
+                                <option value="Official">Official Server</option>
                             </select>
                         </div>
                     </div>
@@ -90,7 +83,7 @@
                 </div>
             </div>
 
-            <!-- กล่อง Audit Logs ประวัติการใช้งานย้อนหลัง -->
+            <!-- กล่อง Audit Logs -->
             <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
                 <h2 class="text-base font-bold font-gaming text-amber-400 mb-3">📋 ประวัติการใช้งานย้อนหลัง (ACTIVITY AUDIT LOGS)</h2>
                 <div id="audit-log-container" class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-xs max-h-48 overflow-y-auto space-y-1 text-slate-400">
@@ -115,7 +108,7 @@
                 return;
             }
 
-            document.getElementById('admin-badge').innerText = `👑 ADMIN: ${currentDiscordUser}`;
+            document.getElementById('admin-badge').innerText = `🛡️ ADMIN: ${currentDiscordUser}`;
             loadAdminData();
         }
 
@@ -144,8 +137,12 @@
 
         function selectUser(user) {
             selectedUser = user;
-            const vipPrefix = user.isVip ? '👑 [VIP] ' : '';
-            document.getElementById('selected-username-text').innerText = `${vipPrefix}${user.username} (ID: ${user.id})`;
+            let rolePrefix = '';
+            if (user.role === 'ADMIN') rolePrefix = '🛡️ [ADMIN] ';
+            else if (user.role === 'VIP') rolePrefix = '👑 [VIP] ';
+            else rolePrefix = '👤 ';
+
+            document.getElementById('selected-username-text').innerText = `${rolePrefix}${user.username} (ID: ${user.id})`;
             document.getElementById('clear-selected-btn').classList.remove('hidden');
             filterAdminRooms();
             renderOnlineUsersUIOnly();
@@ -187,9 +184,12 @@
                     ? `<button onclick="kickUser('${u.id}')" class="bg-rose-950/80 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 px-2 py-1 rounded font-bold font-gaming transition">เตะออก</button>`
                     : `<span class="text-[10px] text-slate-600 font-mono">OFFLINE</span>`;
 
-                const vipTag = u.isVip 
-                    ? `<span class="text-amber-400 font-bold drop-shadow-[0_0_6px_rgba(245,158,11,0.5)]">👑 [VIP] ${u.username}</span>` 
-                    : `<span>👤 ${u.username}</span>`;
+                let nameTag = `<span>👤 ${u.username}</span>`;
+                if (u.role === 'ADMIN') {
+                    nameTag = `<span class="text-rose-400 font-bold drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]">🛡️ [ADMIN] ${u.username}</span>`;
+                } else if (u.role === 'VIP') {
+                    nameTag = `<span class="text-amber-400 font-bold drop-shadow-[0_0_6px_rgba(245,158,11,0.5)]">👑 [VIP] ${u.username}</span>`;
+                }
 
                 item.className = `bg-slate-950 border border-slate-800 p-2.5 rounded-xl flex justify-between items-center text-xs cursor-pointer hover:border-amber-500/50 transition ${isSelected ? 'user-card-selected' : ''}`;
                 
@@ -203,7 +203,7 @@
                         ${statusDot}
                         <div>
                             <div class="font-bold ${isSelected ? 'text-amber-400' : 'text-slate-200'}">
-                                ${isSelected ? '👉 ' : ''}${vipTag}
+                                ${isSelected ? '👉 ' : ''}${nameTag}
                             </div>
                             <div class="text-[10px] text-slate-500 font-mono">ID: ${u.id}</div>
                         </div>
@@ -234,44 +234,47 @@
 
         function filterAdminRooms() {
             const type = document.getElementById('filter-type').value;
-            const city = document.getElementById('filter-city').value;
             const container = document.getElementById('rooms-list');
             container.innerHTML = '';
 
-            let filtered = adminBosses.filter(b => b.location === city);
-            if (type !== 'All') filtered = filtered.filter(b => b.serverType === type);
+            const distinctRooms = [];
+            adminBosses.filter(b => b.serverType === type).forEach(b => {
+                if (!distinctRooms.some(r => r.serverName === b.serverName)) {
+                    distinctRooms.push(b);
+                }
+            });
 
-            filtered.forEach(boss => {
+            distinctRooms.forEach(room => {
                 const item = document.createElement('div');
-                const isLocked = boss.isLocked;
-                const isSelectedUserAllowed = selectedUser && boss.allowedUserIds && boss.allowedUserIds.includes(selectedUser.id);
+                const isLocked = room.isLocked;
+                const isSelectedUserAllowed = selectedUser && room.allowedUserIds && room.allowedUserIds.includes(selectedUser.id);
 
                 item.className = `p-3 rounded-xl border flex flex-col justify-between text-xs ${isLocked && !isSelectedUserAllowed ? 'bg-slate-950/80 border-slate-800' : 'bg-emerald-950/30 border-emerald-500/30'}`;
                 
-                const vipUsersText = boss.allowedUsers && boss.allowedUsers.length > 0 
-                    ? `<div class="text-[10px] text-amber-400 mt-1 font-mono">👑 สิทธิ์ VIP: ${boss.allowedUsers.map(u => `[VIP] ${u}`).join(', ')}</div>` 
+                const vipUsersText = room.allowedUsers && room.allowedUsers.length > 0 
+                    ? `<div class="text-[10px] text-amber-400 mt-1 font-mono">👑 สิทธิ์ VIP: ${room.allowedUsers.map(u => `[VIP] ${u}`).join(', ')}</div>` 
                     : '';
 
                 let actionButton = '';
                 
                 if (!isLocked) {
                     actionButton = `
-                        <button onclick="toggleGlobalLock(${boss.id}, true)" 
+                        <button onclick="toggleGlobalLock('${room.serverType}', '${room.serverName}', true)" 
                             class="w-full mt-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 rounded py-1 font-bold font-gaming transition">
-                            🔒 สั่งล็อคห้องนี้ (เปิด VIP)
+                            🔒 สั่งล็อคห้องนี้ (เปิดระบบ VIP)
                         </button>
                     `;
                 } else if (selectedUser) {
                     if (isSelectedUserAllowed) {
                         actionButton = `
-                            <button onclick="revokeUserRoom(${boss.id}, '${selectedUser.id}')" 
+                            <button onclick="revokeUserRoom('${room.serverType}', '${room.serverName}', '${selectedUser.id}')" 
                                 class="w-full mt-2 bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 rounded py-1 font-bold font-gaming transition">
                                 ❌ ยกเลิกสิทธิ์คุณ ${selectedUser.username}
                             </button>
                         `;
                     } else {
                         actionButton = `
-                            <button onclick="grantUserRoom(${boss.id}, '${selectedUser.id}', '${selectedUser.username}')" 
+                            <button onclick="grantUserRoom('${room.serverType}', '${room.serverName}', '${selectedUser.id}', '${selectedUser.username}')" 
                                 class="w-full mt-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded py-1 font-bold font-gaming transition">
                                 🔓 ปลดล็อกให้คุณ ${selectedUser.username}
                             </button>
@@ -289,9 +292,9 @@
                 item.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
-                            <div class="font-bold font-gaming text-slate-300">TH ${boss.serverName.toUpperCase()}</div>
+                            <div class="font-bold font-gaming text-slate-300">TH ${room.serverName.toUpperCase()} (ทุกเมือง)</div>
                             <div class="text-[10px] ${isLocked ? 'text-amber-500' : 'text-emerald-400'} font-semibold mt-0.5">
-                                ${isLocked ? '🔒 VIP LOCKED (ล็อคอยู่)' : '🔓 PUBLIC UNLOCKED (ฟรีสาธารณะ)'}
+                                ${isLocked ? '🔒 VIP LOCKED (ล็อคเฉพาะบุคคล)' : '🔓 PUBLIC UNLOCKED (เปิดใช้งานฟรี)'}
                             </div>
                             ${vipUsersText}
                         </div>
@@ -302,13 +305,14 @@
             });
         }
 
-        async function grantUserRoom(bossId, targetUserId, targetUsername) {
+        async function grantUserRoom(serverType, serverName, targetUserId, targetUsername) {
             const res = await fetch('/api/admin/grant-user-room', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     adminUsername: currentDiscordUser, 
-                    bossId: bossId, 
+                    serverType: serverType,
+                    serverName: serverName, 
                     targetUserId: targetUserId,
                     targetUsername: targetUsername
                 })
@@ -318,13 +322,14 @@
             if (data.success) loadAdminData();
         }
 
-        async function revokeUserRoom(bossId, targetUserId) {
+        async function revokeUserRoom(serverType, serverName, targetUserId) {
             const res = await fetch('/api/admin/revoke-user-room', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     adminUsername: currentDiscordUser, 
-                    bossId: bossId, 
+                    serverType: serverType,
+                    serverName: serverName, 
                     targetUserId: targetUserId 
                 })
             });
@@ -333,11 +338,11 @@
             if (data.success) loadAdminData();
         }
 
-        async function toggleGlobalLock(bossId, isLocked) {
+        async function toggleGlobalLock(serverType, serverName, isLocked) {
             const res = await fetch('/api/admin/toggle-global-lock', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ adminUsername: currentDiscordUser, bossId: bossId, isLocked: isLocked })
+                body: JSON.stringify({ adminUsername: currentDiscordUser, serverType: serverType, serverName: serverName, isLocked: isLocked })
             });
             const data = await res.json();
             alert(data.message);
@@ -357,7 +362,7 @@
         }
 
         async function lockAllRooms() {
-            if (!confirm("คุณต้องการ สั่งล็อคห้องมาตรฐาน (011-050) กลับคืนใช่หรือไม่?")) return;
+            if (!confirm("คุณต้องการ สั่งล็อคห้องมาตรฐาน (006-050) กลับคืนใช่หรือไม่?")) return;
             const res = await fetch('/api/admin/lock-all', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

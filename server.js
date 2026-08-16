@@ -5,6 +5,7 @@ const querystring = require('querystring');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || "";
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || "";
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || "";
 const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || "https://boos-checker.onrender.com/api/auth/discord/callback";
@@ -20,7 +21,8 @@ const LOCATIONS = [
 ];
 
 const RESPAWN_MINUTES = 60;
-const MAX_ACTIVE_SPAWNS_PER_USER = 7;
+const MAX_SPAWNS_MEMBER = 2; // สิทธิ์คนธรรมดากดได้ 2 ห้อง
+const MAX_SPAWNS_VIP = 15;   // สิทธิ์ VIP กดได้ 15 ห้องเต็ม
 const ADMIN_USERNAMES = ["hexeditorx10", "valentile"];
 
 let activeUsers = new Map();
@@ -28,9 +30,54 @@ let registeredUsers = new Map();
 let auditLogs = [];
 
 function addAuditLog(action, username, details) {
-    const time = new Date().toLocaleTimeString('th-TH');
+    const time = new Date().toLocaleTimeString('th-TH', { 
+        timeZone: 'Asia/Bangkok',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
     auditLogs.unshift({ time, action, username, details });
     if (auditLogs.length > 50) auditLogs.pop();
+}
+
+function sendDiscordAlert(title, description, colorHex, boss, timeText) {
+    if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL.trim() === "") return;
+
+    const payload = JSON.stringify({
+        username: "WarZ TH Boss Tracker",
+        avatar_url: "https://cdn-icons-png.flaticon.com/512/1066/1066371.png",
+        embeds: [{
+            title: title,
+            description: description,
+            color: colorHex,
+            fields: [
+                { name: "📍 เซิร์ฟเวอร์ / ห้อง", value: `TH ${boss.serverName}`, inline: true },
+                { name: "🏢 เมือง / พิกัด", value: boss.location, inline: true },
+                { name: "⏰ เวลาเกิด (Respawn Time)", value: timeText, inline: false }
+            ],
+            footer: { text: "WarZ TH Boss Tracker • boos-checker.onrender.com" },
+            timestamp: new Date().toISOString()
+        }]
+    });
+
+    try {
+        const url = new URL(DISCORD_WEBHOOK_URL);
+        const req = https.request({
+            hostname: url.hostname,
+            path: url.pathname + url.search,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(payload)
+            }
+        });
+        req.on('error', (e) => console.error("Webhook Error:", e.message));
+        req.write(payload);
+        req.end();
+    } catch(err) {
+        console.error("Invalid Webhook URL");
+    }
 }
 
 setInterval(() => {
@@ -38,15 +85,58 @@ setInterval(() => {
     for (const [id, user] of activeUsers.entries()) {
         if (now - user.lastSeen > 10000) activeUsers.delete(id);
     }
-}, 3000);
+
+    bosses.forEach(boss => {
+        if (boss.nextSpawn) {
+            const spawnTime = new Date(boss.nextSpawn).getTime();
+            const diffSeconds = Math.floor((spawnTime - now) / 1000);
+            const timeFormatted = new Date(boss.nextSpawn).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' });
+
+            if (!boss.alertsSent) boss.alertsSent = {};
+
+            if (diffSeconds <= 300 && diffSeconds > 290 && !boss.alertsSent['5min']) {
+                boss.alertsSent['5min'] = true;
+                sendDiscordAlert(
+                    "⏳ บอสใกล้จะเกิดในอีก 5 นาที!",
+                    `เตรียมตัวลงห้อง **TH ${boss.serverName}** เมือง **${boss.location}**`,
+                    0xf59e0b,
+                    boss,
+                    `${timeFormatted} น.`
+                );
+            }
+
+            if (diffSeconds <= 60 && diffSeconds > 50 && !boss.alertsSent['1min']) {
+                boss.alertsSent['1min'] = true;
+                sendDiscordAlert(
+                    "⚠️ บอสใกล้จะเกิดในอีก 1 นาที!",
+                    `รีบเตรียมตัว! บอสกำลังจะเกิดในห้อง **TH ${boss.serverName}** เมือง **${boss.location}**`,
+                    0xff6b00,
+                    boss,
+                    `${timeFormatted} น.`
+                );
+            }
+
+            if (diffSeconds <= 0 && !boss.alertsSent['spawned']) {
+                boss.alertsSent['spawned'] = true;
+                sendDiscordAlert(
+                    "⚔️ BOSS READY FOR FARM! (บอสเกิดแล้ว)",
+                    `🔥 **บอสเกิดแล้วตอนนี้!** ลุยได้เลยที่ **TH ${boss.serverName}** เมือง **${boss.location}**`,
+                    0x10b981,
+                    boss,
+                    `พร้อมล่าแล้วตอนนี้!`
+                );
+            }
+        }
+    });
+}, 1000);
 
 let bosses = [];
 let idCounter = 1;
 
-// Official 50
+// Official 50 ห้อง (เปิดฟรี 5 ห้องแรก 001-005, ล็อค 006-050)
 for (let i = 1; i <= 50; i++) {
     const serverName = `Official ${String(i).padStart(3, '0')}`;
-    const lockedStatus = i > 10; 
+    const lockedStatus = i > 5; 
     LOCATIONS.forEach(loc => {
         bosses.push({
             id: idCounter++,
@@ -63,15 +153,16 @@ for (let i = 1; i <= 50; i++) {
             previousCreatedById: null,
             resetAt: null,
             createdBy: null,
-            createdById: null
+            createdById: null,
+            alertsSent: {}
         });
     });
 }
 
-// Premium 50
+// Premium 50 ห้อง (เปิดฟรี 5 ห้องแรก 001-005, ล็อค 006-050)
 for (let i = 1; i <= 50; i++) {
     const serverName = `Premium ${String(i).padStart(3, '0')}`;
-    const lockedStatus = i > 10;
+    const lockedStatus = i > 5;
     LOCATIONS.forEach(loc => {
         bosses.push({
             id: idCounter++,
@@ -88,15 +179,20 @@ for (let i = 1; i <= 50; i++) {
             previousCreatedById: null,
             resetAt: null,
             createdBy: null,
-            createdById: null
+            createdById: null,
+            alertsSent: {}
         });
     });
 }
 
-function isUserVip(userId, username) {
-    if (username && ADMIN_USERNAMES.includes(username.toLowerCase())) return true;
-    if (!userId) return false;
-    return bosses.some(b => b.allowedUserIds && b.allowedUserIds.includes(userId));
+function checkUserRole(userId, username) {
+    if (username && ADMIN_USERNAMES.includes(username.toLowerCase())) {
+        return "ADMIN";
+    }
+    if (userId && bosses.some(b => b.allowedUserIds && b.allowedUserIds.includes(userId))) {
+        return "VIP";
+    }
+    return "MEMBER";
 }
 
 // ---------------- DISCORD OAUTH2 ----------------
@@ -175,13 +271,7 @@ app.get('/api/bosses', (req, res) => {
 
     if (userId && userId !== 'null' && userId !== 'guest') {
         const finalName = (username && username !== 'null' && username !== 'undefined' && username.trim() !== '') ? username : "Guest";
-        
-        const userInfo = {
-            id: userId,
-            username: finalName,
-            lastSeen: Date.now()
-        };
-
+        const userInfo = { id: userId, username: finalName, lastSeen: Date.now() };
         activeUsers.set(userId, userInfo);
         registeredUsers.set(userId, userInfo);
     }
@@ -190,24 +280,25 @@ app.get('/api/bosses', (req, res) => {
     if (serverType) filtered = filtered.filter(b => b.serverType === serverType);
     if (location) filtered = filtered.filter(b => b.location === location);
 
-    const isCurrentUserVip = isUserVip(userId, username);
+    const currentUserRole = checkUserRole(userId, username);
+    const isAdmin = currentUserRole === "ADMIN";
 
     const customizedBosses = filtered.map(b => {
-        const isUserAllowed = userId && b.allowedUserIds && b.allowedUserIds.includes(userId);
+        const isUserAllowed = isAdmin || (userId && b.allowedUserIds && b.allowedUserIds.includes(userId));
         const isLockedForThisUser = b.isLocked && !isUserAllowed;
-        const isCreatorVip = isUserVip(b.createdById, b.createdBy);
+        const creatorRole = checkUserRole(b.createdById, b.createdBy);
 
         return {
             ...b,
             isLocked: isLockedForThisUser,
-            isCreatorVip: isCreatorVip
+            creatorRole: creatorRole
         };
     });
 
     res.json({
         serverTime: Date.now(),
         onlineCount: activeUsers.size || 1,
-        isVip: isCurrentUserVip,
+        userRole: currentUserRole,
         bosses: customizedBosses
     });
 });
@@ -217,18 +308,30 @@ app.post('/api/bosses/spawn', (req, res) => {
     const boss = bosses.find(b => b.id === Number(id));
     
     if (boss) {
-        const isUserAllowed = userId && boss.allowedUserIds && boss.allowedUserIds.includes(userId);
+        const userRole = checkUserRole(userId, username);
+        const isAdmin = userRole === "ADMIN";
+        const isVip = userRole === "VIP";
+        const isUserAllowed = isAdmin || (userId && boss.allowedUserIds && boss.allowedUserIds.includes(userId));
+
         if (boss.isLocked && !isUserAllowed) {
-            return res.status(403).json({ success: false, message: "ห้องนี้ต้องได้รับการปลดล็อก VIP เฉพาะบุคคล" });
+            return res.status(403).json({ success: false, message: "ห้องนี้ถูกล็อคสำหรับสมาชิก VIP เท่านั้น" });
         }
+
         if (boss.nextSpawn && new Date(boss.nextSpawn) > new Date()) {
             return res.status(400).json({ success: false, message: "ช่องนี้กำลังใช้งานอยู่" });
         }
 
         const nowTime = new Date();
         const userActiveSpawns = bosses.filter(b => b.createdById === userId && b.nextSpawn && new Date(b.nextSpawn) > nowTime);
-        if (userActiveSpawns.length >= MAX_ACTIVE_SPAWNS_PER_USER) {
-            return res.status(400).json({ success: false, message: `คุณกด SPAWN ค้างไว้เกิน ${MAX_ACTIVE_SPAWNS_PER_USER} ห้องแล้ว! กรุณารอบอสเกิดหรือกด RESET ห้องเดิมก่อน` });
+        
+        // กำหนดโควตาตามยศ: คนธรรมดา 2 ห้อง | VIP 15 ห้อง
+        const maxAllowed = isVip ? MAX_SPAWNS_VIP : MAX_SPAWNS_MEMBER;
+        if (!isAdmin && userActiveSpawns.length >= maxAllowed) {
+            if (!isVip) {
+                return res.status(400).json({ success: false, message: `สมาชิกทั่วไปกด SPAWN ค้างไว้ได้สูงสุด ${MAX_SPAWNS_MEMBER} ห้อง! กรุณาปลดล็อค VIP เพื่อใช้งานได้ ${MAX_SPAWNS_VIP} ห้อง` });
+            } else {
+                return res.status(400).json({ success: false, message: `คุณกด SPAWN ค้างไว้ครบโควตา VIP (${MAX_SPAWNS_VIP} ห้อง) แล้ว!` });
+            }
         }
 
         boss.killedAt = nowTime.toISOString();
@@ -239,6 +342,17 @@ app.post('/api/bosses/spawn', (req, res) => {
         boss.previousCreatedBy = null;
         boss.previousCreatedById = null;
         boss.resetAt = null;
+        boss.alertsSent = {};
+
+        const spawnTimeFormatted = new Date(boss.nextSpawn).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' });
+        
+        sendDiscordAlert(
+            "💀 บอสถูกฆ่าแล้ว เริ่มนับเวลาถอยหลัง!",
+            `ผู้เล่น **[${userRole}] ${username || 'Guest'}** ได้กดเริ่มจับเวลาบอส`,
+            0xef4444,
+            boss,
+            `จะเกิดเวลา ${spawnTimeFormatted} น.`
+        );
 
         addAuditLog("SPAWN", username || "Guest", `${boss.serverName} (${boss.location})`);
         return res.json({ success: true, boss });
@@ -251,7 +365,7 @@ app.post('/api/bosses/reset', (req, res) => {
     const boss = bosses.find(b => b.id === Number(id));
     
     if (boss) {
-        const isAdmin = username && ADMIN_USERNAMES.includes(username.toLowerCase());
+        const isAdmin = checkUserRole(userId, username) === "ADMIN";
 
         if (!isAdmin && boss.createdById && boss.createdById !== userId) {
             return res.status(403).json({ success: false, message: "คุณไม่ใช่เจ้าของช่องนี้ ไม่สามารถกด RESET ได้" });
@@ -267,6 +381,7 @@ app.post('/api/bosses/reset', (req, res) => {
         boss.nextSpawn = null;
         boss.createdBy = null;
         boss.createdById = null;
+        boss.alertsSent = {};
 
         addAuditLog("RESET", username || "Guest", `${boss.serverName} (${boss.location})`);
         return res.json({ success: true, boss });
@@ -279,7 +394,7 @@ app.post('/api/bosses/undo', (req, res) => {
     const boss = bosses.find(b => b.id === Number(id));
     
     if (boss) {
-        const isAdmin = username && ADMIN_USERNAMES.includes(username.toLowerCase());
+        const isAdmin = checkUserRole(userId, username) === "ADMIN";
 
         if (!isAdmin && boss.previousCreatedById && boss.previousCreatedById !== userId) {
             return res.status(403).json({ success: false, message: "คุณไม่ใช่เจ้าของช่องนี้ ไม่สามารถกด UNDO ได้" });
@@ -312,7 +427,7 @@ app.post('/api/bosses/undo', (req, res) => {
     res.status(404).json({ success: false, message: "Boss not found" });
 });
 
-// ---------------- API ADMIN (ตรวจสอบผ่าน Admin Username อัตโนมัติ) ----------------
+// ---------------- API ADMIN ----------------
 
 app.post('/api/admin/data', (req, res) => {
     const { adminUsername } = req.body;
@@ -324,7 +439,7 @@ app.post('/api/admin/data', (req, res) => {
         return {
             ...user,
             isOnline: activeUsers.has(user.id),
-            isVip: isUserVip(user.id, user.username)
+            role: checkUserRole(user.id, user.username)
         };
     });
 
@@ -337,59 +452,67 @@ app.post('/api/admin/data', (req, res) => {
 });
 
 app.post('/api/admin/grant-user-room', (req, res) => {
-    const { adminUsername, bossId, targetUserId, targetUsername } = req.body;
+    const { adminUsername, serverType, serverName, targetUserId, targetUsername } = req.body;
     if (!adminUsername || !ADMIN_USERNAMES.includes(adminUsername.toLowerCase())) {
         return res.status(401).json({ success: false, message: "คุณไม่มีสิทธิ์ใช้งาน" });
     }
 
-    const boss = bosses.find(b => b.id === Number(bossId));
-    if (boss) {
-        if (!boss.allowedUserIds) boss.allowedUserIds = [];
-        if (!boss.allowedUsers) boss.allowedUsers = [];
+    const matchingBosses = bosses.filter(b => b.serverType === serverType && b.serverName === serverName);
+    if (matchingBosses.length > 0) {
+        matchingBosses.forEach(boss => {
+            if (!boss.allowedUserIds) boss.allowedUserIds = [];
+            if (!boss.allowedUsers) boss.allowedUsers = [];
 
-        if (!boss.allowedUserIds.includes(targetUserId)) {
-            boss.allowedUserIds.push(targetUserId);
-            boss.allowedUsers.push(targetUsername || "Guest");
-        }
-        addAuditLog("ADMIN_GRANT", adminUsername, `${boss.serverName} -> [VIP] ${targetUsername}`);
-        return res.json({ success: true, message: `ปลดล็อกห้อง ${boss.serverName} ให้คุณ ${targetUsername} เรียบร้อยแล้ว!`, boss });
+            if (!boss.allowedUserIds.includes(targetUserId)) {
+                boss.allowedUserIds.push(targetUserId);
+                boss.allowedUsers.push(targetUsername || "Guest");
+            }
+        });
+
+        addAuditLog("ADMIN_GRANT", adminUsername, `${serverType} ${serverName} -> [VIP] ${targetUsername}`);
+        return res.json({ success: true, message: `ปลดล็อกห้อง ${serverType} ${serverName} (ทุกเมือง) ให้คุณ ${targetUsername} เรียบร้อยแล้ว!` });
     }
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
 });
 
 app.post('/api/admin/revoke-user-room', (req, res) => {
-    const { adminUsername, bossId, targetUserId } = req.body;
+    const { adminUsername, serverType, serverName, targetUserId } = req.body;
     if (!adminUsername || !ADMIN_USERNAMES.includes(adminUsername.toLowerCase())) {
         return res.status(401).json({ success: false, message: "คุณไม่มีสิทธิ์ใช้งาน" });
     }
 
-    const boss = bosses.find(b => b.id === Number(bossId));
-    if (boss) {
-        const idx = boss.allowedUserIds.indexOf(targetUserId);
-        if (idx !== -1) {
-            boss.allowedUserIds.splice(idx, 1);
-            boss.allowedUsers.splice(idx, 1);
-        }
-        addAuditLog("ADMIN_REVOKE", adminUsername, `${boss.serverName} (User ID: ${targetUserId})`);
-        return res.json({ success: true, message: `ยกเลิกสิทธิ์ใช้งานห้อง ${boss.serverName} เรียบร้อย`, boss });
+    const matchingBosses = bosses.filter(b => b.serverType === serverType && b.serverName === serverName);
+    if (matchingBosses.length > 0) {
+        matchingBosses.forEach(boss => {
+            const idx = boss.allowedUserIds.indexOf(targetUserId);
+            if (idx !== -1) {
+                boss.allowedUserIds.splice(idx, 1);
+                boss.allowedUsers.splice(idx, 1);
+            }
+        });
+
+        addAuditLog("ADMIN_REVOKE", adminUsername, `${serverType} ${serverName} (User ID: ${targetUserId})`);
+        return res.json({ success: true, message: `ยกเลิกสิทธิ์ห้อง ${serverType} ${serverName} เรียบร้อย` });
     }
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
 });
 
 app.post('/api/admin/toggle-global-lock', (req, res) => {
-    const { adminUsername, bossId, isLocked } = req.body;
+    const { adminUsername, serverType, serverName, isLocked } = req.body;
     if (!adminUsername || !ADMIN_USERNAMES.includes(adminUsername.toLowerCase())) {
         return res.status(401).json({ success: false, message: "คุณไม่มีสิทธิ์ใช้งาน" });
     }
 
-    const boss = bosses.find(b => b.id === Number(bossId));
-    if (boss) {
-        boss.isLocked = isLocked;
-        if (isLocked) {
-            boss.allowedUserIds = [];
-            boss.allowedUsers = [];
-        }
-        return res.json({ success: true, message: `อัปเดตสถานะห้อง ${boss.serverName} เรียบร้อย` });
+    const matchingBosses = bosses.filter(b => b.serverType === serverType && b.serverName === serverName);
+    if (matchingBosses.length > 0) {
+        matchingBosses.forEach(boss => {
+            boss.isLocked = isLocked;
+            if (isLocked) {
+                boss.allowedUserIds = [];
+                boss.allowedUsers = [];
+            }
+        });
+        return res.json({ success: true, message: `อัปเดตสถานะห้อง ${serverType} ${serverName} เรียบร้อย` });
     }
     res.status(404).json({ success: false, message: "ไม่พบข้อมูลห้อง" });
 });
@@ -417,12 +540,12 @@ app.post('/api/admin/lock-all', (req, res) => {
 
     bosses.forEach(b => {
         const roomNum = parseInt(b.serverName.split(' ')[1]);
-        b.isLocked = roomNum > 10;
+        b.isLocked = roomNum > 5;
         b.allowedUserIds = [];
         b.allowedUsers = [];
     });
-    addAuditLog("ADMIN_LOCK_ALL", adminUsername, "ห้อง 011-050");
-    res.json({ success: true, message: "สั่งล็อคห้องมาตรฐาน (011-050) ทั้งหมดเรียบร้อยแล้ว!" });
+    addAuditLog("ADMIN_LOCK_ALL", adminUsername, "ห้อง 006-050");
+    res.json({ success: true, message: "สั่งล็อคห้องมาตรฐาน (006-050) ทั้งหมดเรียบร้อยแล้ว!" });
 });
 
 app.post('/api/admin/kick-user', (req, res) => {

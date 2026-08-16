@@ -21,12 +21,13 @@ const LOCATIONS = [
 ];
 
 const RESPAWN_MINUTES = 60;
-const MAX_SPAWNS_MEMBER = 2; // สิทธิ์คนธรรมดากดได้ 2 ห้อง
-const MAX_SPAWNS_VIP = 15;   // สิทธิ์ VIP กดได้ 15 ห้องเต็ม
+const MAX_SPAWNS_MEMBER = 2;
+const MAX_SPAWNS_VIP = 15;
 const ADMIN_USERNAMES = ["hexeditorx10", "valentile"];
 
 let activeUsers = new Map();
 let registeredUsers = new Map();
+let globalVipUserIds = new Set(); // เก็บรายชื่อ VIP ถาวร
 let auditLogs = [];
 
 function addAuditLog(action, username, details) {
@@ -133,7 +134,7 @@ setInterval(() => {
 let bosses = [];
 let idCounter = 1;
 
-// Official 50 ห้อง (เปิดฟรี 5 ห้องแรก 001-005, ล็อค 006-050)
+// Official 50 ห้อง
 for (let i = 1; i <= 50; i++) {
     const serverName = `Official ${String(i).padStart(3, '0')}`;
     const lockedStatus = i > 5; 
@@ -159,7 +160,7 @@ for (let i = 1; i <= 50; i++) {
     });
 }
 
-// Premium 50 ห้อง (เปิดฟรี 5 ห้องแรก 001-005, ล็อค 006-050)
+// Premium 50 ห้อง
 for (let i = 1; i <= 50; i++) {
     const serverName = `Premium ${String(i).padStart(3, '0')}`;
     const lockedStatus = i > 5;
@@ -189,7 +190,7 @@ function checkUserRole(userId, username) {
     if (username && ADMIN_USERNAMES.includes(username.toLowerCase())) {
         return "ADMIN";
     }
-    if (userId && bosses.some(b => b.allowedUserIds && b.allowedUserIds.includes(userId))) {
+    if (userId && (globalVipUserIds.has(userId) || bosses.some(b => b.allowedUserIds && b.allowedUserIds.includes(userId)))) {
         return "VIP";
     }
     return "MEMBER";
@@ -282,9 +283,10 @@ app.get('/api/bosses', (req, res) => {
 
     const currentUserRole = checkUserRole(userId, username);
     const isAdmin = currentUserRole === "ADMIN";
+    const isGlobalVip = userId && globalVipUserIds.has(userId);
 
     const customizedBosses = filtered.map(b => {
-        const isUserAllowed = isAdmin || (userId && b.allowedUserIds && b.allowedUserIds.includes(userId));
+        const isUserAllowed = isAdmin || isGlobalVip || (userId && b.allowedUserIds && b.allowedUserIds.includes(userId));
         const isLockedForThisUser = b.isLocked && !isUserAllowed;
         const creatorRole = checkUserRole(b.createdById, b.createdBy);
 
@@ -311,7 +313,7 @@ app.post('/api/bosses/spawn', (req, res) => {
         const userRole = checkUserRole(userId, username);
         const isAdmin = userRole === "ADMIN";
         const isVip = userRole === "VIP";
-        const isUserAllowed = isAdmin || (userId && boss.allowedUserIds && boss.allowedUserIds.includes(userId));
+        const isUserAllowed = isAdmin || (userId && globalVipUserIds.has(userId)) || (userId && boss.allowedUserIds && boss.allowedUserIds.includes(userId));
 
         if (boss.isLocked && !isUserAllowed) {
             return res.status(403).json({ success: false, message: "ห้องนี้ถูกล็อคสำหรับสมาชิก VIP เท่านั้น" });
@@ -324,7 +326,6 @@ app.post('/api/bosses/spawn', (req, res) => {
         const nowTime = new Date();
         const userActiveSpawns = bosses.filter(b => b.createdById === userId && b.nextSpawn && new Date(b.nextSpawn) > nowTime);
         
-        // กำหนดโควตาตามยศ: คนธรรมดา 2 ห้อง | VIP 15 ห้อง
         const maxAllowed = isVip ? MAX_SPAWNS_VIP : MAX_SPAWNS_MEMBER;
         if (!isAdmin && userActiveSpawns.length >= maxAllowed) {
             if (!isVip) {
@@ -439,6 +440,7 @@ app.post('/api/admin/data', (req, res) => {
         return {
             ...user,
             isOnline: activeUsers.has(user.id),
+            isGlobalVip: globalVipUserIds.has(user.id),
             role: checkUserRole(user.id, user.username)
         };
     });
@@ -448,6 +450,29 @@ app.post('/api/admin/data', (req, res) => {
         onlineUsers: allUsersList, 
         bosses: bosses,
         auditLogs: auditLogs
+    });
+});
+
+app.post('/api/admin/toggle-global-vip', (req, res) => {
+    const { adminUsername, targetUserId, targetUsername } = req.body;
+    if (!adminUsername || !ADMIN_USERNAMES.includes(adminUsername.toLowerCase())) {
+        return res.status(401).json({ success: false, message: "คุณไม่มีสิทธิ์ใช้งาน" });
+    }
+
+    let isNowVip = false;
+    if (globalVipUserIds.has(targetUserId)) {
+        globalVipUserIds.delete(targetUserId);
+        addAuditLog("ADMIN_REVOKE_VIP", adminUsername, `ถอดยศ VIP คุณ ${targetUsername}`);
+    } else {
+        globalVipUserIds.add(targetUserId);
+        isNowVip = true;
+        addAuditLog("ADMIN_GRANT_VIP", adminUsername, `แต่งตั้ง 👑 [VIP] ให้คุณ ${targetUsername}`);
+    }
+
+    res.json({ 
+        success: true, 
+        isVip: isNowVip, 
+        message: isNowVip ? `แต่งตั้งยศ VIP ให้คุณ ${targetUsername} เรียบร้อยแล้ว!` : `ถอดยศ VIP ของคุณ ${targetUsername} เรียบร้อยแล้ว` 
     });
 });
 

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WARZ TIMER - CLAN DASHBOARD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #0b0e14; }
+        .font-gaming { font-family: 'Orbitron', sans-serif; }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-6 pb-4 border-b border-slate-800">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-black font-gaming text-[#ff6b00]">🏰 CLAN MANAGEMENT</h1>
+                <p class="text-xs text-slate-500 mt-1">ระบบจัดการสมาชิกแคลน และรหัสเชิญสำหรับลูกทีม</p>
+            </div>
+            <a href="/" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-lg font-bold transition">
+                ← กลับหน้าหลัก
+            </a>
+        </header>
+
+        <div id="clan-content" class="space-y-6">
+            <!-- Clan Info Card -->
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span id="clan-tag-badge" class="text-2xl font-black font-gaming text-[#ff6b00]">[TAG]</span>
+                            <span id="clan-name-text" class="text-xl font-bold text-white">Clan Name</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">👑 หัวแคลน: <span id="clan-leader-text" class="text-amber-400 font-bold">---</span></p>
+                    </div>
+
+                    <!-- Invite Code Box -->
+                    <div class="bg-slate-950 border border-[#ff6b00]/30 p-3 rounded-xl flex items-center gap-3">
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-bold">🔑 รหัสเชิญลูกแคลน (INVITE CODE)</p>
+                            <span id="invite-code-text" class="text-lg font-black font-gaming text-amber-400 tracking-wider">------</span>
+                        </div>
+                        <button onclick="refreshInviteCode()" id="refresh-code-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs p-2 rounded-lg transition" title="สร้างรหัสเชิญใหม่">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Member List -->
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                <h2 class="text-base font-bold font-gaming text-amber-400 mb-4 flex justify-between items-center">
+                    <span>👥 รายชื่อสมาชิกในแคลน</span>
+                    <span id="member-count-badge" class="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded border border-amber-500/30">0 คน</span>
+                </h2>
+
+                <div id="members-list-container" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const myUserId = localStorage.getItem('warz_user_id');
+        let currentClan = null;
+
+        async function loadClanData() {
+            if (!myUserId) {
+                alert('กรุณาเข้าสู่ระบบก่อน');
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/clan/details', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: myUserId })
+                });
+                const data = await res.json();
+
+                if (!data.success) {
+                    alert(data.message);
+                    window.location.href = '/';
+                    return;
+                }
+
+                currentClan = data.clan;
+                renderClanUI();
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        function renderClanUI() {
+            document.getElementById('clan-tag-badge').innerText = `[${currentClan.tag}]`;
+            document.getElementById('clan-name-text').innerText = currentClan.name;
+            document.getElementById('clan-leader-text').innerText = currentClan.leaderUsername;
+            document.getElementById('invite-code-text').innerText = currentClan.inviteCode;
+            document.getElementById('member-count-badge').innerText = `${currentClan.members.length} คน`;
+
+            if (!currentClan.isLeader) {
+                document.getElementById('refresh-code-btn').classList.add('hidden');
+            }
+
+            const container = document.getElementById('members-list-container');
+            container.innerHTML = '';
+
+            currentClan.members.forEach(m => {
+                const row = document.createElement('div');
+                row.className = "bg-slate-950 border border-slate-800 p-3 rounded-xl flex justify-between items-center text-xs";
+                
+                const dot = m.isOnline 
+                    ? `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block mr-2"></span>` 
+                    : `<span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block mr-2"></span>`;
+
+                const roleBadge = m.isLeader 
+                    ? `<span class="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded text-[10px] font-bold">👑 LEADER</span>` 
+                    : `<span class="bg-slate-800 text-slate-400 px-2 py-0.5 rounded text-[10px]">MEMBER</span>`;
+
+                let kickBtn = '';
+                if (currentClan.isLeader && !m.isLeader) {
+                    kickBtn = `<button onclick="kickMember('${m.id}', '${m.username}')" class="bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 px-2.5 py-1 rounded font-bold transition">เตะออก</button>`;
+                }
+
+                row.innerHTML = `
+                    <div class="flex items-center">
+                        ${dot}
+                        <div>
+                            <span class="font-bold text-slate-200">${m.username}</span>
+                            <span class="text-slate-500 text-[10px] ml-1">ID: ${m.id}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        ${roleBadge}
+                        ${kickBtn}
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        async function kickMember(targetId, targetName) {
+            if (!confirm(`คุณต้องการเตะคุณ ${targetName} ออกจากแคลนใช่หรือไม่?`)) return;
+            const res = await fetch('/api/clan/kick', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leaderUserId: myUserId, targetUserId: targetId })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) loadClanData();
+        }
+
+        async function refreshInviteCode() {
+            if (!confirm("คุณต้องการสร้างรหัสเชิญใหม่ใช่หรือไม่? รหัสเดิมจะใช้งานไม่ได้อีกต่อไป")) return;
+            const res = await fetch('/api/clan/refresh-invite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leaderUserId: myUserId })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) loadClanData();
+        }
+
+        loadClanData();
+    </script>
+</body>
+</html>

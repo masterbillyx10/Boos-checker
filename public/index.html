@@ -29,6 +29,12 @@
         .active-tab-orange { background: #ff6b00 !important; color: #000000 !important; font-weight: 700; }
         .active-city { border-color: #ff6b00 !important; color: #ff6b00 !important; background: #1e1e1e; }
 
+        @keyframes slideInUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .toast-slide { animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #121212; }
         ::-webkit-scrollbar-thumb { background: #282828; border-radius: 3px; }
@@ -36,6 +42,8 @@
     </style>
 </head>
 <body class="min-h-screen relative flex flex-col justify-between" onclick="closeUserMenuOutside(event)">
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 md:px-0"></div>
 
     <!-- Landing Page -->
     <div id="landing-page" class="hidden fixed inset-0 z-50 bg-[#121212] flex flex-col justify-between p-6 md:p-12 overflow-y-auto">
@@ -93,8 +101,8 @@
             </div>
 
             <div class="space-y-1 text-xs font-semibold">
-                <a id="admin-panel-menu" href="/admin.html" class="hidden flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-[#ff6b00]/10 hover:bg-[#ff6b00] text-[#ff6b00] hover:text-black border border-[#ff6b00]/30 transition font-bold">
-                    <span>⚙️</span> ศูนย์จัดการ Admin
+                <a id="admin-panel-menu" href="/admin.html" class="hidden flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 transition font-bold">
+                    <span>🛡️</span> ศูนย์จัดการ ADMIN
                 </a>
                 <a href="https://warzth.thehof.gg/news/boss-update-11-august-2026-th" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-[#222] text-slate-300 hover:text-white transition">
                     <span>🧟‍♂️</span> รายละเอียดบอส SUPER ZOMBIE
@@ -113,7 +121,7 @@
     </div>
 
     <div>
-        <header class="text-center pt-8 pb-4">
+        <header class="text-center pt-8 pb-3">
             <h1 class="text-3xl md:text-4xl font-black font-gaming tracking-wider text-white">
                 WARZ <span class="text-[#ff6b00]">BOSS TIMER</span>
             </h1>
@@ -123,11 +131,22 @@
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff6b00] opacity-75"></span>
                     <span class="relative inline-flex rounded-full h-2 w-2 bg-[#ff6b00]"></span>
                 </span>
-                <span class="text-slate-400">ONLINE: <span id="online-count" class="text-[#ff6b00] font-bold">1</span> USER(S)</span>
+                <span class="text-slate-400">ONLINE: <span id="online-count" class="text-[#ff6b00] font-bold">1</span> USER </span>
             </div>
         </header>
 
-        <main class="max-w-6xl mx-auto px-4">
+        <main class="max-w-6xl mx-auto px-4 mb-10">
+            <div id="live-boss-banner" class="hidden mb-6 p-3 bg-gradient-to-r from-emerald-950/40 via-amber-950/30 to-rose-950/40 border border-[#ff6b00]/30 rounded-2xl">
+                <div class="flex items-center justify-between gap-2 mb-2 px-1">
+                    <span class="text-xs font-bold font-gaming text-[#ff6b00] flex items-center gap-1.5">
+                        <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
+                        ⚡ LIVE BOSS RADAR (บอสที่พร้อมล่า / ใกล้เกิด)
+                    </span>
+                    <span id="radar-count-text" class="text-[10px] font-mono text-slate-400">พบ 0 ห้อง</span>
+                </div>
+                <div id="live-boss-chips" class="flex flex-wrap gap-2"></div>
+            </div>
+
             <div class="flex justify-center gap-3 mb-6">
                 <button id="tab-premium" onclick="selectServerType('Premium')" 
                     class="active-tab-orange px-6 py-2 rounded-xl text-xs font-bold font-gaming transition-all duration-200 border border-[#282828]">
@@ -248,32 +267,60 @@
         let currentType = 'Premium';
         let currentCity = 'Norad Military Base';
         let bossesData = [];
+        let allBossesRadar = [];
         let serverTimeOffset = 0;
         let playedAlerts = new Set();
+        let notifiedEvents = new Set();
 
-        function playBossSpawnSound() {
+        function playSoundAlert(type = 'spawn') {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc1 = audioCtx.createOscillator();
-                const gain1 = audioCtx.createGain();
-                osc1.type = 'sine';
-                osc1.frequency.value = 880;
-                osc1.connect(gain1);
-                gain1.connect(audioCtx.destination);
-                osc1.start(audioCtx.currentTime);
-                osc1.stop(audioCtx.currentTime + 0.15);
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                
+                if (type === 'spawn') {
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1320, audioCtx.currentTime + 0.3);
+                } else if (type === '1min') {
+                    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(900, audioCtx.currentTime + 0.15);
+                } else {
+                    osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+                }
 
-                const osc2 = audioCtx.createOscillator();
-                const gain2 = audioCtx.createGain();
-                osc2.type = 'sine';
-                osc2.frequency.value = 1200;
-                osc2.connect(gain2);
-                gain2.connect(audioCtx.destination);
-                osc2.start(audioCtx.currentTime + 0.18);
-                osc2.stop(audioCtx.currentTime + 0.4);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.35);
             } catch (e) {
                 console.log("Audio blocked:", e);
             }
+        }
+
+        function showLiveToast(title, message, badgeColorClass, icon) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast-slide pointer-events-auto bg-[#181818] border border-[#282828] p-3 rounded-2xl shadow-2xl flex items-start gap-3 backdrop-blur-md transition-all duration-300`;
+            
+            toast.innerHTML = `
+                <div class="text-2xl p-1">${icon}</div>
+                <div class="flex-1 pr-2">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xs font-bold font-gaming text-white">${title}</span>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${badgeColorClass}">LIVE ALERT</span>
+                    </div>
+                    <p class="text-[11px] text-slate-300 mt-0.5">${message}</p>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white text-xs">✕</button>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 6000);
         }
 
         function openVipModal() { document.getElementById('vip-modal').classList.remove('hidden'); }
@@ -309,12 +356,16 @@
 
         async function fetchBosses(forceRebuild = false) {
             const url = `/api/bosses?serverType=${currentType}&location=${encodeURIComponent(currentCity)}&userId=${myUserId || 'guest'}&username=${encodeURIComponent(currentDiscordUser || 'Guest')}`;
+            const allUrl = `/api/bosses?userId=${myUserId || 'guest'}&username=${encodeURIComponent(currentDiscordUser || 'Guest')}`;
+
             try {
-                const res = await fetch(url);
-                const data = await res.json();
+                const [resCurrent, resAll] = await Promise.all([fetch(url), fetch(allUrl)]);
+                const data = await resCurrent.json();
+                const dataAll = await resAll.json();
                 
                 serverTimeOffset = data.serverTime - Date.now();
                 bossesData = data.bosses;
+                allBossesRadar = dataAll.bosses;
                 
                 if (data.onlineCount) {
                     document.getElementById('online-count').innerText = data.onlineCount;
@@ -322,14 +373,87 @@
                     if (landingCount) landingCount.innerText = `USER ONLINE ${data.onlineCount}`;
                 }
 
-                // ปรับแต่งชื่อในโปรไฟล์ถ้าเป็น VIP
-                if (data.isVip && currentDiscordUser) {
+                if (data.userRole === "ADMIN") {
+                    document.getElementById('dropdown-username').innerHTML = `<span class="text-rose-400 font-bold drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]">🛡️ [ADMIN] ${currentDiscordUser}</span>`;
+                } else if (data.userRole === "VIP") {
                     document.getElementById('dropdown-username').innerHTML = `<span class="text-amber-400 font-bold drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">👑 [VIP] ${currentDiscordUser}</span>`;
                 }
                 
-                if (currentDiscordUser) renderBossGrid(forceRebuild);
+                if (currentDiscordUser) {
+                    renderBossGrid(forceRebuild);
+                    processLiveAlerts();
+                }
             } catch(e) {
                 console.error("Error fetching bosses:", e);
+            }
+        }
+
+        function processLiveAlerts() {
+            const now = Date.now() + serverTimeOffset;
+            const liveChipsContainer = document.getElementById('live-boss-chips');
+            const liveBanner = document.getElementById('live-boss-banner');
+            let activeReadyList = [];
+
+            allBossesRadar.forEach(boss => {
+                if (boss.nextSpawn) {
+                    const spawnTime = new Date(boss.nextSpawn).getTime();
+                    const diff = spawnTime - now;
+                    const totalSec = Math.floor(diff / 1000);
+
+                    const key5m = `5m_${boss.id}_${boss.nextSpawn}`;
+                    const key1m = `1m_${boss.id}_${boss.nextSpawn}`;
+                    const keyReady = `ready_${boss.id}_${boss.nextSpawn}`;
+
+                    if (totalSec <= 300 && totalSec > 280 && !notifiedEvents.has(key5m)) {
+                        notifiedEvents.add(key5m);
+                        showLiveToast(`[TH ${boss.serverName}] ${boss.location}`, `บอสใกล้จะเกิดในอีก 5 นาที!`, `bg-amber-500/20 text-amber-400 border border-amber-500/30`, `⏳`);
+                        playSoundAlert('5min');
+                    }
+
+                    if (totalSec <= 60 && totalSec > 40 && !notifiedEvents.has(key1m)) {
+                        notifiedEvents.add(key1m);
+                        showLiveToast(`[TH ${boss.serverName}] ${boss.location}`, `รีบเตรียมตัว! บอสจะเกิดในอีก 1 นาที!`, `bg-rose-500/20 text-rose-400 border border-rose-500/30`, `⚠️`);
+                        playSoundAlert('1min');
+                    }
+
+                    if (totalSec <= 0 && !notifiedEvents.has(keyReady)) {
+                        notifiedEvents.add(keyReady);
+                        showLiveToast(`[TH ${boss.serverName}] ${boss.location}`, `🔥 บอสเกิดแล้วตอนนี้! รีบลงไปล่าเลย!`, `bg-emerald-500/20 text-emerald-400 border border-emerald-500/30`, `⚔️`);
+                        playSoundAlert('spawn');
+                    }
+
+                    if (totalSec <= 300) {
+                        activeReadyList.push({
+                            server: boss.serverName,
+                            type: boss.serverType,
+                            city: boss.location,
+                            sec: totalSec
+                        });
+                    }
+                }
+            });
+
+            if (activeReadyList.length > 0) {
+                liveBanner.classList.remove('hidden');
+                document.getElementById('radar-count-text').innerText = `พบ ${activeReadyList.length} ห้องกำลังพร้อมล่า`;
+                liveChipsContainer.innerHTML = '';
+
+                activeReadyList.forEach(item => {
+                    const chip = document.createElement('div');
+                    const isReady = item.sec <= 0;
+                    const chipBg = isReady ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' : 'bg-amber-500/20 border-amber-500/40 text-amber-400';
+                    const timeText = isReady ? '🔥 READY' : `${Math.floor(item.sec/60)}:${String(item.sec%60).padStart(2,'0')}`;
+                    
+                    chip.className = `px-2.5 py-1 rounded-xl border text-[11px] font-bold font-gaming flex items-center gap-1.5 cursor-pointer hover:scale-105 transition shadow-sm ${chipBg}`;
+                    chip.onclick = () => {
+                        selectServerType(item.type);
+                        selectCity(item.city);
+                    };
+                    chip.innerHTML = `<span>${item.server} (${item.city})</span> <span class="font-mono bg-black/40 px-1.5 py-0.5 rounded text-[10px]">${timeText}</span>`;
+                    liveChipsContainer.appendChild(chip);
+                });
+            } else {
+                liveBanner.classList.add('hidden');
             }
         }
 
@@ -391,18 +515,18 @@
                 if (!card) return;
 
                 if (boss.isLocked) {
-                    card.className = "clean-card card-locked rounded-xl p-4 flex flex-col justify-between text-center relative overflow-hidden";
+                    card.className = "clean-card rounded-xl p-4 flex flex-col justify-between text-center relative overflow-hidden bg-slate-950/60 border-slate-800";
                     card.innerHTML = `
                         <div>
                             <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs font-bold font-gaming text-slate-400 tracking-wider">
+                                <span class="text-xs font-bold font-gaming text-slate-500 tracking-wider">
                                     TH ${boss.serverName.toUpperCase()}
                                 </span>
-                                <span class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold">🔒 VIP LOCKED</span>
+                                <span class="text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold">🔒 VIP LOCKED</span>
                             </div>
                             
-                            <div class="text-lg font-bold font-gaming text-amber-500/60 my-4 tracking-widest flex items-center justify-center gap-2">
-                                <span>🔒</span> <span>LOCKED</span>
+                            <div class="text-base font-bold font-gaming text-amber-500/60 my-5 tracking-widest flex items-center justify-center gap-2">
+                                <span>🔒</span> <span>VIP ONLY</span>
                             </div>
                         </div>
 
@@ -466,12 +590,6 @@
                         timerDisplay = "READY!";
                         timerColor = "text-[#ff6b00] font-bold animate-pulse";
                         cardStyleClass = "clean-card";
-
-                        const isMySpawn = localStorage.getItem(`my_spawn_${boss.id}`) === 'true';
-                        if (isMySpawn && !playedAlerts.has(boss.id)) {
-                            playBossSpawnSound();
-                            playedAlerts.add(boss.id);
-                        }
                     }
                 } else {
                     localStorage.removeItem(`my_spawn_${boss.id}`);
@@ -503,10 +621,11 @@
                     ? "bg-rose-950/40 hover:bg-rose-600/30 text-rose-400 border border-rose-500/40 cursor-pointer font-bold" 
                     : "bg-[#121212] text-slate-700 border border-[#282828] cursor-not-allowed opacity-40";
 
-                // ป้ายชื่อคนจับเวลา (ถ้าเป็น VIP จะใส่กรอบทอง [VIP])
                 let userBadge = '';
                 if (inUse && boss.createdBy) {
-                    if (boss.isCreatorVip) {
+                    if (boss.creatorRole === 'ADMIN') {
+                        userBadge = `<span class="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/50 px-2 py-0.5 rounded font-bold max-w-[130px] truncate shadow-[0_0_10px_rgba(244,63,94,0.3)]">🛡️ [ADMIN] ${boss.createdBy}</span>`;
+                    } else if (boss.creatorRole === 'VIP') {
                         userBadge = `<span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded font-bold max-w-[130px] truncate shadow-[0_0_10px_rgba(245,158,11,0.2)]">👑 [VIP] ${boss.createdBy}</span>`;
                     } else {
                         userBadge = `<span class="text-[10px] border px-2 py-0.5 rounded font-bold max-w-[110px] truncate ${badgeClass}">👤 ${boss.createdBy}</span>`;
@@ -548,7 +667,7 @@
             if (currentDiscordUser) renderBossGrid(false);
         }, 1000);
 
-        setInterval(() => fetchBosses(false), 3500);
+        setInterval(() => fetchBosses(false), 3000);
         fetchBosses(true);
     </script>
 </body>

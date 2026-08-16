@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WARZ TIMER - ADMIN DASHBOARD</title>
+    <title>WARZ TIMER - ADMIN CONTROL PANEL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -14,15 +14,20 @@
             background: rgba(245, 158, 11, 0.15) !important;
             box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
         }
+        .active-tab {
+            background: #f59e0b !important;
+            color: #000000 !important;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body class="text-slate-200 min-h-screen p-4 md:p-8">
 
     <div class="max-w-6xl mx-auto">
-        <header class="flex justify-between items-center mb-6 pb-4 border-b border-slate-800">
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 pb-4 border-b border-slate-800">
             <div>
                 <h1 class="text-2xl md:text-3xl font-black font-gaming text-amber-400">⚙️ ADMIN CONTROL PANEL</h1>
-                <p class="text-xs text-slate-500 mt-1">ระบบจัดการปลดล็อกห้อง VIP เฉพาะบุคคล และจัดการสิทธิ์ผู้ใช้งาน</p>
+                <p class="text-xs text-slate-500 mt-1">ระบบจัดการปลดล็อกห้อง VIP และสร้างแคลนขายสิทธิ์ส่วนตัว</p>
             </div>
             <div class="flex items-center gap-3">
                 <span id="admin-badge" class="bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs px-3 py-1.5 rounded-lg font-bold font-gaming">
@@ -34,6 +39,16 @@
             </div>
         </header>
 
+        <!-- Navigation Tabs -->
+        <div class="flex gap-2 mb-6 border-b border-slate-800 pb-3">
+            <button onclick="switchTab('rooms')" id="tab-btn-rooms" class="active-tab px-4 py-2 rounded-xl text-xs font-bold font-gaming transition border border-slate-700">
+                🔒 ปลดล็อกห้อง VIP
+            </button>
+            <button onclick="switchTab('clans')" id="tab-btn-clans" class="px-4 py-2 rounded-xl text-xs font-bold font-gaming text-slate-400 bg-slate-900 hover:bg-slate-800 transition border border-slate-800">
+                🏰 จัดการแคลน (CLAN SYSTEM)
+            </button>
+        </div>
+
         <div id="access-denied" class="hidden text-center py-20 bg-slate-900 border border-rose-500/30 rounded-2xl">
             <div class="text-5xl mb-3">⛔</div>
             <h2 class="text-xl font-bold font-gaming text-rose-500 mb-2">ACCESS DENIED</h2>
@@ -41,7 +56,9 @@
         </div>
 
         <div id="admin-content" class="space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- SECTION 1: จัดการห้อง VIP -->
+            <div id="section-rooms" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- ซ้าย: รายชื่อผู้ใช้ทั้งหมด + ปุ่มตั้ง VIP -->
                 <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl h-fit">
                     <h2 class="text-base font-bold font-gaming text-amber-400 mb-2 flex items-center justify-between">
@@ -88,6 +105,44 @@
                 </div>
             </div>
 
+            <!-- SECTION 2: จัดการระบบแคลน (CLAN MANAGEMENT) -->
+            <div id="section-clans" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- สร้างแคลนใหม่ -->
+                    <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl h-fit">
+                        <h2 class="text-base font-bold font-gaming text-[#ff6b00] mb-3">➕ สร้างแคลนใหม่ (ขายสิทธิ์ส่วนตัว)</h2>
+                        <div class="space-y-3 text-xs">
+                            <div>
+                                <label class="block text-slate-400 mb-1">ชื่อแคลน (Clan Name):</label>
+                                <input id="new-clan-name" type="text" placeholder="เช่น DEMON GOD" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-gaming focus:border-[#ff6b00] outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-slate-400 mb-1">แท็กแคลน (Clan Tag):</label>
+                                <input id="new-clan-tag" type="text" placeholder="เช่น GOD" maxlength="6" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-gaming uppercase focus:border-[#ff6b00] outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-slate-400 mb-1">เลือกหัวแคลน (Leader):</label>
+                                <select id="leader-select-dropdown" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white outline-none">
+                                    <option value="">-- กรุณาเลือกผู้ใช้งาน --</option>
+                                </select>
+                            </div>
+                            <button onclick="createClanSubmit()" class="w-full bg-[#ff6b00] hover:bg-[#e05d00] text-black font-bold font-gaming py-2.5 rounded-xl transition shadow-lg mt-2">
+                                🚀 สร้างแคลน & ปลดล็อค 100 ห้อง
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- รายชื่อแคลนทั้งหมด -->
+                    <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                        <h2 class="text-base font-bold font-gaming text-amber-400 mb-3 flex justify-between items-center">
+                            <span>🏰 รายชื่อแคลนในระบบ</span>
+                            <span id="clan-count-badge" class="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded border border-amber-500/30">0</span>
+                        </h2>
+                        <div id="clans-list-container" class="space-y-3 max-h-[450px] overflow-y-auto pr-2"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- กล่อง Audit Logs -->
             <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
                 <h2 class="text-base font-bold font-gaming text-amber-400 mb-3">📋 ประวัติการใช้งานย้อนหลัง (ACTIVITY AUDIT LOGS)</h2>
@@ -95,6 +150,7 @@
                     <p class="text-center py-2 text-slate-600">ไม่มีประวัติการใช้งาน</p>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -103,7 +159,29 @@
         const currentDiscordUser = localStorage.getItem('discord_username');
 
         let adminBosses = [];
+        let adminClans = [];
         let selectedUser = null;
+        let activeTab = 'rooms';
+
+        function switchTab(tab) {
+            activeTab = tab;
+            const btnRooms = document.getElementById('tab-btn-rooms');
+            const btnClans = document.getElementById('tab-btn-clans');
+            const secRooms = document.getElementById('section-rooms');
+            const secClans = document.getElementById('section-clans');
+
+            if (tab === 'rooms') {
+                btnRooms.className = 'active-tab px-4 py-2 rounded-xl text-xs font-bold font-gaming transition border border-slate-700';
+                btnClans.className = 'px-4 py-2 rounded-xl text-xs font-bold font-gaming text-slate-400 bg-slate-900 hover:bg-slate-800 transition border border-slate-800';
+                secRooms.classList.remove('hidden');
+                secClans.classList.add('hidden');
+            } else {
+                btnClans.className = 'active-tab px-4 py-2 rounded-xl text-xs font-bold font-gaming transition border border-slate-700';
+                btnRooms.className = 'px-4 py-2 rounded-xl text-xs font-bold font-gaming text-slate-400 bg-slate-900 hover:bg-slate-800 transition border border-slate-800';
+                secClans.classList.remove('hidden');
+                secRooms.classList.add('hidden');
+            }
+        }
 
         async function initAdminDashboard() {
             if (!currentDiscordUser || !ADMIN_USERNAMES.includes(currentDiscordUser.toLowerCase())) {
@@ -132,7 +210,10 @@
                 }
 
                 adminBosses = data.bosses;
+                adminClans = data.clans || [];
                 renderOnlineUsers(data.onlineUsers);
+                renderClansList(adminClans);
+                updateLeaderDropdown(data.onlineUsers);
                 filterAdminRooms();
                 renderAuditLogs(data.auditLogs);
             } catch(e) {
@@ -140,10 +221,100 @@
             }
         }
 
+        function updateLeaderDropdown(users) {
+            const dropdown = document.getElementById('leader-select-dropdown');
+            const currentVal = dropdown.value;
+            dropdown.innerHTML = `<option value="">-- กรุณาเลือกผู้ใช้งาน --</option>`;
+            users.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = JSON.stringify({ id: u.id, username: u.username });
+                opt.innerText = `${u.username} (ID: ${u.id}) ${u.clan ? `- ${u.clan}` : ''}`;
+                dropdown.appendChild(opt);
+            });
+            if (currentVal) dropdown.value = currentVal;
+        }
+
+        async function createClanSubmit() {
+            const name = document.getElementById('new-clan-name').value;
+            const tag = document.getElementById('new-clan-tag').value;
+            const leaderVal = document.getElementById('leader-select-dropdown').value;
+
+            if (!name || !tag || !leaderVal) {
+                alert('กรุณากรอกข้อมูลชื่อแคลน แท็กแคลน และเลือกหัวแคลนให้ครบถ้วน');
+                return;
+            }
+
+            const leader = JSON.parse(leaderVal);
+            const res = await fetch('/api/admin/create-clan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    adminUsername: currentDiscordUser,
+                    clanName: name,
+                    clanTag: tag,
+                    leaderUserId: leader.id,
+                    leaderUsername: leader.username
+                })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) {
+                document.getElementById('new-clan-name').value = '';
+                document.getElementById('new-clan-tag').value = '';
+                loadAdminData();
+            }
+        }
+
+        function renderClansList(clans) {
+            const container = document.getElementById('clans-list-container');
+            document.getElementById('clan-count-badge').innerText = clans.length;
+            container.innerHTML = '';
+
+            if (clans.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">ยังไม่มีแคลนในระบบ</p>`;
+                return;
+            }
+
+            clans.forEach(c => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-bold font-gaming text-amber-400">[${c.tag}] ${c.name}</span>
+                            <span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">100 ห้องส่วนตัว</span>
+                        </div>
+                        <div class="text-xs text-slate-400 mt-1 space-y-0.5">
+                            <p>👑 หัวแคลน: <strong class="text-slate-200">${c.leaderUsername}</strong> (ID: ${c.leaderId})</p>
+                            <p>👥 สมาชิก: <strong class="text-emerald-400">${c.memberCount}</strong> คน | 🔑 รหัสเชิญ: <span class="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-amber-300 font-bold">${c.inviteCode}</span></p>
+                        </div>
+                    </div>
+                    <button onclick="deleteClan('${c.id}', '${c.name}')" class="bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                        🗑️ ลบแคลน
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function deleteClan(clanId, clanName) {
+            if (!confirm(`คุณต้องการลบแคลน ${clanName} ใช่หรือไม่? สมาชิกทุกคนจะกลับเป็นผู้ใช้ทั่วไป`)) return;
+            const res = await fetch('/api/admin/delete-clan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ adminUsername: currentDiscordUser, clanId })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) loadAdminData();
+        }
+
         function selectUser(user) {
             selectedUser = user;
             let rolePrefix = '';
             if (user.role === 'ADMIN') rolePrefix = '🛡️ [ADMIN] ';
+            else if (user.role === 'CLAN_LEADER') rolePrefix = '👑 [LEADER] ';
+            else if (user.role === 'CLAN_MEMBER') rolePrefix = '⚔️ [CLAN] ';
             else if (user.role === 'VIP') rolePrefix = '👑 [VIP] ';
             else rolePrefix = '👤 ';
 
@@ -221,6 +392,10 @@
                 let nameTag = `<span>👤 ${u.username}</span>`;
                 if (u.role === 'ADMIN') {
                     nameTag = `<span class="text-rose-400 font-bold drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]">🛡️ [ADMIN] ${u.username}</span>`;
+                } else if (u.role === 'CLAN_LEADER') {
+                    nameTag = `<span class="text-amber-300 font-bold">👑 [LEADER] ${u.username} <small class="text-slate-400">${u.clan}</small></span>`;
+                } else if (u.role === 'CLAN_MEMBER') {
+                    nameTag = `<span class="text-amber-400 font-bold">⚔️ [CLAN] ${u.username} <small class="text-slate-400">${u.clan}</small></span>`;
                 } else if (u.role === 'VIP') {
                     nameTag = `<span class="text-amber-400 font-bold drop-shadow-[0_0_6px_rgba(245,158,11,0.5)]">👑 [VIP] ${u.username}</span>`;
                 }
